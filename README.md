@@ -114,11 +114,11 @@ flet run src/gui/app.py
 ---
 
 ## 📜 License
-MIT (placeholder)
+MIT
 
 ---
 
 ## 👥 Contributors
-- Project Lead: *Your Name*
+- Project Lead: J4ve
 - Open to contributions via PRs & issues.
 
