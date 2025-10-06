@@ -112,5 +112,5 @@ MIT
 
 ## 👥 Contributors
 - J4ve
-- 
+- GeraldUnderdog
 
