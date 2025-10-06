@@ -1,12 +1,12 @@
-# 🎮 GameClip YouTube Uploader
+# 🎮 Video Merger and Uploader
 
-An open-source desktop tool for streamers and gamers to automatically upload bulk clips and VODs to YouTube — no manual renaming, no repetitive settings, and optional automatic highlight compilations.
+An open-source desktop tool for streamers and video editors to automatically upload bulk clips and VODs to YouTube — no manual renaming, no repetitive settings, and optional automatic highlight compilations.
 
 ---
 
 ## ✨ Features (Planned)
 - **Bulk Upload**: Upload multiple clips at once with template-based titles, descriptions, and tags.
-- **Config Profiles**: Save game-specific settings (tags, titles, playlists).
+- **Config Profiles**: Save specific settings (tags, titles, playlists).
 - **Manifest Support**: Use CSV/JSON files to define metadata, publish dates, and highlight flags.
 - **Compilation Mode**: Automatically merge selected clips into a single highlight video using FFmpeg.
 - **Thumbnail Automation**: Generate thumbnails from video frames if none are provided.
@@ -93,8 +93,8 @@ The project follows an **Agile / Iterative-Incremental model**:
 ## 📦 Installation (Placeholder)
 ```bash
 # Clone repo
-git clone https://github.com/yourusername/gameclip-uploader.git
-cd gameclip-uploader
+git clone https://github.com/J4ve/videomerger_app.git
+cd videomerger_app
 
 # Install dependencies
 pip install -r requirements.txt
@@ -105,20 +105,12 @@ flet run src/gui/app.py
 
 ---
 
-## 🏆 Differentiators
-- Gamer/streamer focus (profiles per game).
-- Hybrid workflow: individual clip uploads + compilations.
-- Automation-first (zero manual renaming/settings).
-- Easy-to-use desktop GUI with drag & drop.
-
----
-
 ## 📜 License
 MIT
 
 ---
 
 ## 👥 Contributors
-- Project Lead: J4ve
-- Open to contributions via PRs & issues.
+- J4ve
+- 
 
