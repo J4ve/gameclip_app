@@ -62,21 +62,21 @@ The project follows an **Agile / Iterative-Incremental model**:
 ---
 
 ## 🗂️ Roadmap
-### Milestone 1: Core Uploader (MVP)
-- [ ] YouTube API auth setup
-- [ ] Single video upload
-- [ ] Bulk folder upload
-- [ ] JSON config for title/description
+### Milestone 1: GUI (Flet)
+- [ ] GUI skeleton (tabs: Upload, Compilation, Config)
+- [ ] Drag & drop folder support
+- [ ] Upload queue + progress bars
 
 ### Milestone 2: Compilation Feature
 - [ ] Select videos for compilation
 - [ ] Merge clips with FFmpeg
 - [ ] Upload compilation with template
 
-### Milestone 3: GUI (Flet)
-- [ ] GUI skeleton (tabs: Upload, Compilation, Config)
-- [ ] Drag & drop folder support
-- [ ] Upload queue + progress bars
+### Milestone 3: Core Uploader
+- [ ] YouTube API auth setup
+- [ ] Single video upload
+- [ ] Bulk folder upload
+- [ ] JSON config for title/description
 
 ### Milestone 4: Scheduling + Polish
 - [ ] Support `publishAt` scheduling
