@@ -168,6 +168,11 @@ pip install -r requirements.txt
 
 ## 🚀 Run the App
 
+**Important**: Navigate to the `src/` directory before running the app:
+```bash
+cd src
+```
+
 ### Standard Python Environment
 
 Run as a desktop app:
