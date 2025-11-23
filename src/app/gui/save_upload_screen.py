@@ -77,8 +77,8 @@ class SaveUploadScreen:
                                 ft.Divider(),
                                 
                                 # Buttons
-                                ft.ElevatedButton("Save", icon=ft.icons.SAVE),
-                                ft.ElevatedButton("Save / Upload", icon=ft.icons.UPLOAD),
+                                ft.ElevatedButton("Save", icon=ft.Icons.SAVE),
+                                ft.ElevatedButton("Save / Upload", icon=ft.Icons.UPLOAD),
                                 
                                 # Placeholder for status tags
                             ],

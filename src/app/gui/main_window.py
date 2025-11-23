@@ -15,7 +15,7 @@ class MainWindow:
     
     def __init__(self, page: ft.Page):
         self.page = page
-        self.current_step = 0  # 0=Upload, 1=Arrange, 2=Save/Upload
+        self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
         self.selected_videos = []  # Shared state across screens
         self.setup_page()
         
@@ -50,24 +50,87 @@ class MainWindow:
         """Build and return the main layout"""
         # TODO: Initialize screen instances with callbacks
         # TODO: Create stepper indicator (Step 1/2/3)
+        match self.current_step:
+            case 0:
+                content = SelectionScreen().build()
+            case 1:
+                content = ArrangementScreen().build()
+            case 2:
+                content = SaveUploadScreen().build()
         # TODO: Display current screen based on self.current_step
         # TODO: Add settings button to open ConfigTab dialog
         
-        # Placeholder stepper indicator
-        stepper = ft.Row(
-            [
-                ft.Text("Step 1: Select", weight=ft.FontWeight.BOLD),
-                ft.Icon(ft.icons.ARROW_FORWARD),
-                ft.Text("Step 2: Arrange"),
-                ft.Icon(ft.icons.ARROW_FORWARD),
-                ft.Text("Step 3: Save/Upload"),
+        # Stepper indicator
+        stepper = ft.Container(
+            content=ft.Row([
+                # Step 1: Select Videos
+                ft.Column([
+                    ft.Container(
+                        content=ft.Text("1", color=ft.Colors.WHITE),  # Number in circle
+                        width=40,
+                        height=40,
+                        bgcolor=ft.Colors.BLUE,  # Circle color
+                        border_radius=20,  # Half of width/height = circle!
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.Text("Select Videos", size=12),  # Label below
+                ], 
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+                ),
+                
+                ft.Container(  # Line
+                    height=2,  # Thin line
+                    bgcolor=ft.Colors.GREY,
+                    expand=True,  # Stretch
+                ),
+                
+                # Step 2: Arrange and Merge
+                ft.Column([
+                    ft.Container(
+                        content=ft.Text("2", color=ft.Colors.WHITE),  # Number in circle
+                        width=40,
+                        height=40,
+                        bgcolor=ft.Colors.GREY,  # Circle color
+                        border_radius=20,
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.Text("Arrange and Merge", size=12),  # Label below
+                ], 
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+                ),
+                
+                ft.Container(  # Line
+                    height=2,
+                    bgcolor=ft.Colors.GREY,
+                    expand=True,  # Stretch
+                ),
+                
+                # Step 3: Save/Upload
+                ft.Column([
+                    ft.Container(
+                        content=ft.Text("3", color=ft.Colors.WHITE),  # Number in circle
+                        width=40,
+                        height=40,
+                        bgcolor=ft.Colors.GREY,  # Circle color
+                        border_radius=20,
+                        alignment=ft.alignment.center,
+                    ),
+                    ft.Text("Save/Upload", size=12),  # Label below
+                ], 
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=5,
+                ),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=ft.padding.only(top=20, left=200, right=200), # Padding for the entire stepper indicator
         )
         
         # Placeholder for screen content
         content = ft.Container(
-            content=ft.Text("Screen content goes here"),
+            content=ft.Text("Screen content goes here RAHHHHHHH YES"),
             expand=True,
         )
         

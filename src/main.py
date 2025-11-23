@@ -9,7 +9,11 @@ def main(page: ft.Page):
     # TODO: Handle app lifecycle
     
     # Temporary placeholder
-    page.add(ft.Text("Replace this with MainWindow.build() call"))
+    window = MainWindow(page)
+    page.add(
+        window.build()
+        )
+    page.update()
 
 
 ft.app(main)

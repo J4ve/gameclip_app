@@ -3,7 +3,7 @@ Config Tab - Application settings
 """
 
 import flet as ft
-
+from configs.config import Config
 
 class ConfigTab:
     """Config tab layout and components"""
