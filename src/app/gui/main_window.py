@@ -17,6 +17,7 @@ class MainWindow:
         self.page = page
         self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
         self.selected_videos = []  # Shared state across screens
+        self.next_button = None  # Next button at bottom right
         self.setup_page()
         
     def setup_page(self):
@@ -46,6 +47,19 @@ class MainWindow:
         """Move to previous wizard step"""
         # TODO: Call go_to_step(current_step - 1)
         pass
+    
+    def next_button_clicked(self, e):
+        """Handle next button click - delegate to current screen"""
+        # Call the current screen's validation/next handler
+        if self.current_step == 0:
+            # SelectionScreen will handle validation
+            pass
+        elif self.current_step == 1:
+            # ArrangementScreen validation
+            pass
+        elif self.current_step == 2:
+            # SaveUploadScreen validation
+            pass
         
     def build(self):
         """Build and return the main layout"""
@@ -53,7 +67,7 @@ class MainWindow:
         # TODO: Create stepper indicator (Step 1/2/3)
         match self.current_step:
             case 0:
-                content = SelectionScreen(page=self.page, on_next=self.next_step).build()
+                content = SelectionScreen(page=self.page).build()
             case 1:
                 content = ArrangementScreen().build()
             case 2:
@@ -129,12 +143,28 @@ class MainWindow:
             padding=ft.padding.only(top=20, left=200, right=200), # Padding for the entire stepper indicator
         )
     
+        # Fixed next button at bottom right
+        self.next_button = ft.Container(
+            content=ft.ElevatedButton(
+                text="Next",
+                icon=ft.Icons.ARROW_FORWARD,
+                on_click=self.next_button_clicked,
+            ),
+            right=40,
+            bottom=40,
+        )
         
-        return ft.Column(
+        return ft.Stack(
             [
-                stepper,
-                ft.Divider(),
-                content,
+                ft.Column(
+                    [
+                        stepper,
+                        ft.Divider(),
+                        content,
+                    ],
+                    expand=True,
+                ),
+                self.next_button,  # Fixed position overlay
             ],
             expand=True,
         )

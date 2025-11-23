@@ -10,13 +10,13 @@ from pathlib import Path
 class SelectionScreen:
     """First screen: File selection with FilePicker"""
     
-    def __init__(self, page: ft.Page, on_next=None):
+    def __init__(self, page: ft.Page):
         self.page = page
-        self.on_next = on_next  # Callback for "Next" button
         self.selected_files = []  # Store selected video files
         self.file_list = ft.Column(spacing=5)  # Display selected files
         self.drop_zone_container = None  # Will store the drop zone reference
         self.files_display = None  # Will store the files display reference
+        self.file_list_container = None  # Will store the scrollable container
         
         # Initialize FilePicker
         self.file_picker = ft.FilePicker(on_result=self.handle_file_selection)
@@ -59,6 +59,13 @@ class SelectionScreen:
                 self.files_display.visible = has_files
                 self.drop_zone_container.visible = not has_files
             
+            # Adjust container height based on number of files (each row ~30px)
+            if self.file_list_container:
+                num_files = len(self.selected_files)
+                # Min 60px, max 400px, ~30px per file
+                new_height = min(max(num_files * 30, 60), 400)
+                self.file_list_container.height = new_height
+            
             self.page.update()
     
     def remove_file(self, file_path):
@@ -85,20 +92,14 @@ class SelectionScreen:
                 self.files_display.visible = has_files
                 self.drop_zone_container.visible = not has_files
             
+            # Adjust container height based on number of files
+            if self.file_list_container:
+                num_files = len(self.selected_files)
+                new_height = min(max(num_files * 30, 60), 400)
+                self.file_list_container.height = new_height
+            
             self.page.update()
     
-    def handle_next(self, e):
-        """Handle Next button click"""
-        if self.selected_files and self.on_next:
-            self.on_next(self.selected_files)
-        elif not self.selected_files:
-            self.page.snack_bar = ft.SnackBar(
-                content=ft.Text("Please select at least one video file"),
-                bgcolor=ft.Colors.WARNING,
-            )
-            self.page.snack_bar.open = True
-            self.page.update()
-        
     def build(self):
         """Build and return selection screen layout (Frame 1)"""
         
@@ -126,20 +127,22 @@ class SelectionScreen:
         )
         
         # Selected files list (only shows when files are selected)
+        self.file_list_container = ft.Container(
+            content=ft.Column(
+                [self.file_list],
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            width=500,
+            height=60,  # Initial minimum height
+            border=ft.border.all(1, ft.Colors.GREY_300),
+            border_radius=10,
+            padding=10,
+        )
+        
         self.files_display = ft.Container(
             content=ft.Column([
                 ft.Text("Selected Files:", size=14, weight=ft.FontWeight.BOLD),
-                ft.Container(
-                    content=ft.Column(
-                        [self.file_list],
-                        scroll=ft.ScrollMode.AUTO,
-                    ),
-                    width=500,
-                    height=250,  # Fixed height for scrolling
-                    border=ft.border.all(1, ft.Colors.GREY_300),
-                    border_radius=10,
-                    padding=10,
-                ),
+                self.file_list_container,
                 ft.TextButton(
                     text="Add More Videos",
                     icon=ft.Icons.ADD,
@@ -170,19 +173,6 @@ class SelectionScreen:
                     
                     # Selected files (replaces drop zone when files exist)
                     self.files_display,
-                    
-                    # Next button (bottom right)
-                    ft.Container(
-                        content=ft.Row([
-                            ft.Container(expand=True),  # Pushes button to right
-                            ft.ElevatedButton(
-                                text="Next",
-                                icon=ft.Icons.ARROW_FORWARD,
-                                on_click=self.handle_next,
-                            ),
-                        ]),
-                        padding=ft.padding.only(top=10),
-                    ),
                 ],
                 spacing=10,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
