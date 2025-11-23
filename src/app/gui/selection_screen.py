@@ -1,12 +1,12 @@
 """
-Upload Screen - Video selection (Step 1)
+Selection Screen - Video selection (Step 1)
 """
 
 import flet as ft
 from configs.config import Config
 
 
-class UploadScreen:
+class SelectionScreen:
     """First screen: File selection with drag & drop"""
     
     def __init__(self, on_next=None):

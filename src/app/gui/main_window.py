@@ -4,7 +4,7 @@ Main Window - Wizard Navigation
 
 import flet as ft
 from configs.config import Config
-from .upload_screen import UploadScreen
+from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
