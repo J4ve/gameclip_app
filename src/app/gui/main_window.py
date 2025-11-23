@@ -24,6 +24,7 @@ class MainWindow:
         self.page.title = Config.APP_TITLE
         self.page.window_width = Config.APP_WIDTH
         self.page.window_height = Config.APP_HEIGHT
+        self.page.window.center() 
         self.page.theme_mode = ft.ThemeMode.LIGHT
         self.page.padding = 0
         # TODO: Add app bar with config button
@@ -52,7 +53,7 @@ class MainWindow:
         # TODO: Create stepper indicator (Step 1/2/3)
         match self.current_step:
             case 0:
-                content = SelectionScreen().build()
+                content = SelectionScreen(page=self.page, on_next=self.next_step).build()
             case 1:
                 content = ArrangementScreen().build()
             case 2:
@@ -127,12 +128,7 @@ class MainWindow:
             ),
             padding=ft.padding.only(top=20, left=200, right=200), # Padding for the entire stepper indicator
         )
-        
-        # Placeholder for screen content
-        content = ft.Container(
-            content=ft.Text("Screen content goes here RAHHHHHHH YES"),
-            expand=True,
-        )
+    
         
         return ft.Column(
             [
