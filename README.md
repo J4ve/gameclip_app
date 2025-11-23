@@ -88,7 +88,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Create initial project structure (src/, tests/, configs/)
 
 ### Milestone 2: GUI (Flet)
-- [ ] GUI skeleton (tabs: Upload, Compilation, Config)
+- [x] GUI skeleton (tabs: Upload, Compilation, Config)
 - [ ] Drag & drop folder support
 - [ ] Upload queue + progress bars
 - [ ] File browser integration
