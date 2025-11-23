@@ -95,7 +95,7 @@ class SelectionScreen:
             # Adjust container height based on number of files
             if self.file_list_container:
                 num_files = len(self.selected_files)
-                new_height = min(max(num_files * 30, 60), 400)
+                new_height = min(max(num_files * 30, 60), 200)
                 self.file_list_container.height = new_height
             
             self.page.update()
