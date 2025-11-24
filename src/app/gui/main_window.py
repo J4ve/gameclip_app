@@ -1,0 +1,242 @@
+"""
+Main Window - Wizard Navigation
+"""
+
+import flet as ft
+from configs.config import Config
+from .selection_screen import SelectionScreen
+from .arrangement_screen import ArrangementScreen
+from .save_upload_screen import SaveUploadScreen
+from .config_tab import ConfigTab
+
+
+class MainWindow:
+    """Main application window with stepper navigation"""
+    
+    def __init__(self, page: ft.Page):
+        self.page = page
+        self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
+        self.selected_videos = []  # Shared state across screens
+        self.next_button = None  # Next button at bottom right
+        self.selection_screen = SelectionScreen(page=self.page) #selection screen
+        print(f"SelectionScreen created: {self.selection_screen}")
+        self.arrangement_screen = ArrangementScreen() #arrangement screen
+        self.save_upload_screen = SaveUploadScreen() #save/upload screen
+
+        # stepper indicator thingies
+        # Step 1: Select Videos
+        self.step1_indicator = ft.Column([
+            ft.Container(
+                content=ft.Text("1", color=ft.Colors.WHITE),  # Number in circle
+                width=40,
+                height=40,
+                bgcolor=ft.Colors.BLUE,  # Circle color
+                border_radius=20,  # Half of width/height = circle!
+                alignment=ft.alignment.center,
+            ),
+            ft.Text("Select Videos", size=12),  # Label below
+        ], 
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=5,
+        )
+        
+        self.first_line_step_indicator = ft.Container(  # Line
+            height=2,  # Thin line
+            bgcolor=ft.Colors.GREY,
+            expand=True,  # Stretch
+            margin=ft.margin.only(bottom=22), # 22 lol perfect pantay na haha
+        )
+        
+        # Step 2: Arrange and Merge
+        self.step2_indicator = ft.Column([
+            ft.Container(
+                content=ft.Text("2", color=ft.Colors.WHITE),  # Number in circle
+                width=40,
+                height=40,
+                bgcolor=ft.Colors.GREY,  # Circle color
+                border_radius=20,
+                alignment=ft.alignment.center,
+            ),
+            ft.Text("Arrange and Merge", size=12),  # Label below
+        ], 
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=5,
+        )
+        
+        self.second_line_step_indicator = ft.Container(  # Line
+            height=2,
+            bgcolor=ft.Colors.GREY,
+            expand=True,  # Stretch
+            margin=ft.margin.only(bottom=22), # 22 lol perfect pantay na haha
+        )
+        
+        # Step 3: Save/Upload
+        self.step3_indicator = ft.Column([
+            ft.Container(
+                content=ft.Text("3", color=ft.Colors.WHITE),  # Number in circle
+                width=40,
+                height=40,
+                bgcolor=ft.Colors.GREY,  # Circle color
+                border_radius=20,
+                alignment=ft.alignment.center,
+            ),
+            ft.Text("Save/Upload", size=12),  # Label below
+        ], 
+        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=5,
+        )
+
+        self.setup_page()
+        
+    def setup_page(self):
+        """Configure page settings"""
+        self.page.title = Config.APP_TITLE
+        self.page.window_width = Config.APP_WIDTH
+        self.page.window_height = Config.APP_HEIGHT
+        self.page.window.center() 
+        self.page.theme_mode = ft.ThemeMode.LIGHT
+        self.page.padding = 0
+        # TODO: Add app bar with config button
+        
+    def go_to_step(self, step):
+        """Navigate to specific step"""
+        self.current_step = step
+        
+        # Update stepper colors based on current step
+
+        #circles
+        self.step1_indicator.controls[0].bgcolor = ft.Colors.BLUE if step >= 0 else ft.Colors.GREY
+        self.step2_indicator.controls[0].bgcolor = ft.Colors.BLUE if step >= 1 else ft.Colors.GREY
+        self.step3_indicator.controls[0].bgcolor = ft.Colors.BLUE if step >= 2 else ft.Colors.GREY
+
+        #lines
+        self.first_line_step_indicator.bgcolor = ft.Colors.BLUE if step >= 1 else ft.Colors.GREY
+        self.second_line_step_indicator.bgcolor = ft.Colors.BLUE if step >= 2 else ft.Colors.GREY
+
+        
+        self.page.controls = [self.build()]
+        self.page.update()
+
+        
+    def next_step(self):
+        """Move to next wizard step"""
+        if self.current_step < 2:
+            self.current_step += 1
+            self.go_to_step(self.current_step)
+        
+    def previous_step(self):
+        """Move to previous wizard step"""
+        if self.current_step > 0:
+            self.current_step -= 1
+            self.go_to_step(self.current_step)
+    
+    def next_button_clicked(self, e):
+        """Handle next button click - delegate to current screen"""
+        print("next button clicked")
+        # Call the current screen's validation/next handler
+        if not self.selection_screen.selected_files:
+            print("Error: no files")
+            # Show error for empty selected files
+            snackbar_no_files = ft.SnackBar(
+                content=ft.Text("Please select at least one video file"),
+                bgcolor=ft.Colors.ERROR,
+            )
+            self.page.overlay.append(snackbar_no_files)
+            snackbar_no_files.open = True
+            self.page.update()
+        else:
+            print("files found: calling next_step()")
+            if self.current_step == 0:
+                # SelectionScreen will handle validation
+                self.next_step()
+            elif self.current_step == 1:
+                # ArrangementScreen validation
+                self.next_step()
+            elif self.current_step == 2:
+                # SaveUploadScreen validation
+                pass
+
+    def back_button_clicked(self, e):
+        """Handle back button click - delegate to current screen"""
+        print("back button clicked")
+        if self.current_step > 0:
+            self.previous_step()
+        
+    def build(self):
+        """Build and return the main layout"""
+        # Display current screen based on self.current_step
+        match self.current_step:
+            case 0:
+                content = self.selection_screen.build()
+            case 1:
+                content = self.arrangement_screen.build()
+            case 2:
+                content = self.save_upload_screen.build()
+
+        # TODO: Add settings button to open ConfigTab dialog
+
+        # build the stepper indicator
+        stepper = ft.Container(
+            content=ft.Row([
+                self.step1_indicator,
+                self.first_line_step_indicator,
+                self.step2_indicator,
+                self.second_line_step_indicator,
+                self.step3_indicator,
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            padding=ft.padding.only(top=20, left=200, right=200), # Padding for the entire stepper indicator
+        )
+
+        # Fixed next button at bottom right
+        self.next_button = ft.Container(
+            content=ft.ElevatedButton(
+                text="Next",
+                style=ft.ButtonStyle(
+                    text_style=ft.TextStyle(size=18, color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD),
+                ),
+                color=ft.Colors.WHITE,
+                bgcolor=ft.Colors.BLUE,
+                icon=ft.Icons.ARROW_FORWARD,
+                on_click=self.next_button_clicked,
+                height=70,
+                width=200,
+            ),
+            right=40,
+            bottom=55,
+        )
+
+        # Back button at top left, small, icon only
+        self.back_button = ft.Container(
+            content=ft.IconButton(
+                icon=ft.Icons.ARROW_BACK,
+                icon_color=ft.Colors.GREY,
+                on_click=self.back_button_clicked,
+                width=40,
+                height=40,
+                style=ft.ButtonStyle(
+                    shape=ft.RoundedRectangleBorder(radius=10),
+                ),
+            ),
+            left=20,
+            top=20,
+        )
+
+        stack_children = [
+            ft.Column(
+                [
+                    stepper,
+                    ft.Divider(),
+                    content,
+                ],
+                expand=True,
+            ),
+            self.next_button,  # Fixed position overlay
+        ]
+        if self.current_step > 0:
+            stack_children.append(self.back_button)  # Show back button only if not at first step
+        return ft.Stack(
+            stack_children,
+            expand=True,
+        )

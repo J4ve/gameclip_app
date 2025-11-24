@@ -1,6 +1,6 @@
 [project]
 name = "videomerger-app"
-version = "0.0.1"
+version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.9"
@@ -23,6 +23,7 @@ dependencies = [
   ffmpeg-python==0.2.0
   flet==0.28.3
   flet-cli==0.28.3
+  flet-desktop==0.28.3
   future==1.0.0
   h11==0.16.0
   httpcore==1.0.9
@@ -41,6 +42,7 @@ dependencies = [
   pypng==0.20220715.0
   pytest==9.0.1
   python-dateutil==2.9.0.post0
+  python-dotenv==1.2.1
   python-slugify==8.0.4
   PyYAML==6.0.3
   qrcode==7.4.2

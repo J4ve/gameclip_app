@@ -1,26 +1,19 @@
 import flet as ft
+from app.gui import MainWindow
 
 
 def main(page: ft.Page):
-    counter = ft.Text("0", size=50, data=0)
-
-    def increment_click(e):
-        counter.data += 1
-        counter.value = str(counter.data)
-        counter.update()
-
-    page.floating_action_button = ft.FloatingActionButton(
-        icon=ft.Icons.ADD, on_click=increment_click
-    )
+    """Main application entry point"""
+    # TODO: Initialize MainWindow
+    # TODO: Call build() and add to page
+    # TODO: Handle app lifecycle
+    
+    # Temporary placeholder
+    window = MainWindow(page)
     page.add(
-        ft.SafeArea(
-            ft.Container(
-                counter,
-                alignment=ft.alignment.center,
-            ),
-            expand=True,
+        window.build()
         )
-    )
+    page.update()
 
 
 ft.app(main)
