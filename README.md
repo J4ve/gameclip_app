@@ -116,6 +116,23 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Logs + error retries
 - [ ] CSV manifest support
 
+### Milestone 6: Access Control System
+- [ ] Firebase project setup
+- [ ] Enable Authentication & Firestore
+- [ ] Implement Login / Signup / Logout
+- [ ] Load user roles on login
+- [ ] Define roles: guest, user, premium, admin
+- [ ] Create Firestore user documents
+- [ ] Apply custom role claims
+- [ ] Role-based UI restrictions
+- [ ] Guest/User: watermark + merge limits
+- [ ] Premium: full access, no watermark
+- [ ] Admin dashboard (view users)
+- [ ] Admin role editing (promote/demote)
+- [ ] Admin ban/unban users
+- [ ] Firestore security rules by role
+- [ ] Comprehensive role testing & bypass attempts
+
 ### Milestone 6: Distribution
 - [ ] Package with Flet pack / PyInstaller
 - [ ] GitHub Actions CI/CD pipeline
