@@ -13,6 +13,7 @@ class ArrangementScreen:
         self.videos = videos or []  # List of selected videos from Step 1
         self.on_next = on_next  # Callback for "Next" button
         self.on_back = on_back  # Callback for "Back" button
+        self.file_list = ft.Column(spacing=5)
         # TODO: Initialize preview state
         # TODO: Initialize playback controls
         
@@ -24,6 +25,18 @@ class ArrangementScreen:
         # TODO: Top right - "Arrange By" dropdown (Name, Date, Size, Custom)
         # TODO: Add remove buttons for each video
         # TODO: Add "Back" and "Next" navigation buttons
+        self.file_list_container = ft.Container(
+            content=ft.Column(
+                [self.file_list],
+                scroll=ft.ScrollMode.AUTO,
+            ),
+            width=500,
+            height=60,  # Initial minimum height
+            border=ft.border.all(1, ft.Colors.GREY_300),
+            border_radius=10,
+            padding=10,
+        )
+
         
         return ft.Container(
             content=ft.Column(
@@ -36,7 +49,7 @@ class ArrangementScreen:
                             # Center: Preview
                             ft.Container(
                                 content=ft.Text("Video Preview"),
-                                bgcolor=ft.colors.BLACK12,
+                                bgcolor=ft.Colors.BLACK12,
                                 expand=2,
                                 alignment=ft.alignment.center,
                             ),

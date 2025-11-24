@@ -47,11 +47,12 @@ class SelectionScreen:
                         )
                 else:
                     # Show error for invalid format
-                    self.page.snack_bar = ft.SnackBar(
+                    unssuported_file_snackbar = ft.SnackBar(
                         content=ft.Text(f"Unsupported format: {file_ext}"),
                         bgcolor=ft.Colors.ERROR,
                     )
-                    self.page.snack_bar.open = True
+                    self.page.overlay.append(unssuported_file_snackbar)
+                    unssuported_file_snackbar.open = True
             
             # Toggle visibility based on files
             if self.files_display and self.drop_zone_container:
@@ -102,7 +103,7 @@ class SelectionScreen:
     
     def build(self):
         """Build and return selection screen layout (Frame 1)"""
-        
+
         # Clickable drop zone
         self.drop_zone_container = ft.Container(
             content=ft.Column(
@@ -123,22 +124,24 @@ class SelectionScreen:
                 allow_multiple=True,
                 file_type=ft.FilePickerFileType.VIDEO,
             ),
-            visible=True,  # Visible by default
+            visible=True,  # Will be set below
         )
-        
+
         # Selected files list (only shows when files are selected)
+        num_files = len(self.selected_files)
+        file_list_height = min(max(num_files * 30, 80), 200)  # 80px min so 2 files always visible
         self.file_list_container = ft.Container(
             content=ft.Column(
                 [self.file_list],
                 scroll=ft.ScrollMode.AUTO,
             ),
             width=500,
-            height=60,  # Initial minimum height
+            height=file_list_height,
             border=ft.border.all(1, ft.Colors.GREY_300),
             border_radius=10,
             padding=10,
         )
-        
+
         self.files_display = ft.Container(
             content=ft.Column([
                 ft.Text("Selected Files:", size=14, weight=ft.FontWeight.BOLD),
@@ -155,22 +158,27 @@ class SelectionScreen:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             spacing=10,
             ),
-            visible=False,  # Hidden by default
+            visible=False,  # Will be set below
             padding=10,
         )
-        
+
+        # Set visibility based on whether files are selected
+        has_files = num_files > 0
+        self.files_display.visible = has_files
+        self.drop_zone_container.visible = not has_files
+
         return ft.Container(
             content=ft.Column(
                 [
                     # Header
                     ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD),
                     ft.Text(f"Supported formats: {', '.join(Config.SUPPORTED_VIDEO_FORMATS)}", size=12),
-                    
+
                     ft.Container(height=20),  # Spacer
-                    
+
                     # Drop zone (hidden when files are selected)
                     self.drop_zone_container,
-                    
+
                     # Selected files (replaces drop zone when files exist)
                     self.files_display,
                 ],
@@ -178,6 +186,6 @@ class SelectionScreen:
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             alignment=ft.alignment.center,
-            padding=40, 
+            padding=40,
             expand=True,
         )
