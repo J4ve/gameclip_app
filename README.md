@@ -89,9 +89,10 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 
 ### Milestone 2: GUI (Flet)
 - [x] GUI skeleton (tabs: Upload, Compilation, Config)
-- [ ] Drag & drop folder support
+- ~~[ ] Drag & drop folder support~~
+- [x] Select videos through clicking
 - [ ] Upload queue + progress bars
-- [ ] File browser integration
+- [x] File browser integration
 - [ ] Real-time status updates with tqdm
 
 ### Milestone 3: Compilation Feature

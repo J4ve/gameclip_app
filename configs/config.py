@@ -10,5 +10,7 @@ class Config:
     APP_HEIGHT = 900
 
     SUPPORTED_VIDEO_FORMATS = [".mp4", ".mkv", ".mov", ".avi"]
+    DEFAULT_OUTPUT_FORMAT = [".mp4"] #placeholder muna
+    DEFAULT_CODEC = [] #placeholder aa
 
     
