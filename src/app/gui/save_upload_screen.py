@@ -48,7 +48,7 @@ class SaveUploadScreen:
                     ft.Container(
                         content=ft.Container(
                             content=ft.Text("Video Preview"),
-                            bgcolor=ft.colors.BLACK12,
+                            bgcolor=ft.Colors.BLACK12,
                             alignment=ft.alignment.center,
                         ),
                         expand=2,
@@ -86,7 +86,7 @@ class SaveUploadScreen:
                         ),
                         expand=1,
                         padding=10,
-                        bgcolor=ft.colors.SURFACE_VARIANT,
+                        bgcolor=ft.Colors.ON_SURFACE_VARIANT,
                     ),
                 ],
                 expand=True,
