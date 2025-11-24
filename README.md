@@ -133,7 +133,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Firestore security rules by role
 - [ ] Comprehensive role testing & bypass attempts
 
-### Milestone 6: Distribution
+### Milestone 7: Distribution
 - [ ] Package with Flet pack / PyInstaller
 - [ ] GitHub Actions CI/CD pipeline
 - [ ] Windows executable build
