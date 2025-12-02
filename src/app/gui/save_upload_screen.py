@@ -183,9 +183,11 @@ class SaveUploadScreen:
                     ft.Container(
                         content=ft.Column(
                             [
-                                ft.Text("Save / Upload", size=20, weight=ft.FontWeight.BOLD),
+                                ft.Text("Save", size=20, weight=ft.FontWeight.BOLD),
                                 ft.Divider(),
                                 save_settings_section,
+                                ft.Text("Upload", size=20, weight=ft.FontWeight.BOLD),
+                                ft.Divider(),
                                 upload_settings_section,
                                 buttons_section,
                             ],
