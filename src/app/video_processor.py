@@ -8,14 +8,16 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Callable
 import threading
+from app.cache_processor import CacheProcessor, CacheSettings
 
 
 class VideoProcessor:
     """Handles video merging and processing using FFmpeg"""
     
-    def __init__(self):
+    def __init__(self, cache_settings: Optional['CacheSettings'] = None):
         self.current_process = None
         self.is_processing = False
+        self.cache_processor = CacheProcessor(cache_settings)
         
     def check_ffmpeg(self) -> bool:
         """Check if FFmpeg is installed and accessible"""
@@ -63,6 +65,35 @@ class VideoProcessor:
         thread.daemon = True
         thread.start()
     
+    def merge_and_cache(
+        self,
+        video_paths: List[str],
+        cache_path: str,
+        progress_callback: Optional[Callable] = None,
+        completion_callback: Optional[Callable] = None
+    ):
+        """
+        Merge videos into a downscaled cache with preview support
+        
+        Args:
+            video_paths: List of video file paths to merge
+            cache_path: Base path for cached output (without extension)
+            progress_callback: Function to call with progress updates (percentage, message)
+            completion_callback: Function to call when complete (success, message, output_path)
+        """
+        if not video_paths:
+            if completion_callback:
+                completion_callback(False, "No videos to cache", None)
+            return
+        
+        # Use cache processor to handle downscaling
+        self.cache_processor.create_cache(
+            video_paths=video_paths,
+            cache_path=cache_path,
+            progress_callback=progress_callback,
+            completion_callback=completion_callback
+        )
+    
     def _merge_videos_thread(
         self,
         video_paths: List[str],
@@ -74,16 +105,10 @@ class VideoProcessor:
     ):
         """Internal thread function for video merging"""
         self.is_processing = True
-        output_file = None
+        output_file = f"{video_format.lower()}" if output_path.endswith(video_format.lower()) else f"{output_path}{video_format.lower()}"
         
         try:
-            # Create output filename with timestamp if not already timestamped
-            if not any(datetime.now().strftime("%Y%m%d") in output_path for _ in [1]):
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                output_file = f"{output_path}_{timestamp}{video_format}"
-            else:
-                output_file = f"{output_path}{video_format}"
-            
+
             # Ensure output directory exists
             output_dir = Path(output_file).parent
             output_dir.mkdir(parents=True, exist_ok=True)
