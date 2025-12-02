@@ -94,7 +94,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] File browser integration
 
 ### Milestone 3: Compilation Feature
-- [ ] Video selection interface
+- [x] Video selection interface
 - [ ] FFmpeg integration for merging clips
 - [ ] Preview functionality
 - [ ] Output format configuration
