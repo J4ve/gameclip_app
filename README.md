@@ -87,13 +87,11 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Set up GitHub repository with proper branching
 - [x] Create initial project structure (src/, tests/, configs/)
 
-### Milestone 2: GUI (Flet)
+### Milestone 2: GUI (Flet) ✅
 - [x] GUI skeleton (tabs: Upload, Compilation, Config)
 - ~~[ ] Drag & drop folder support~~
 - [x] Select videos through clicking
-- [ ] Upload queue + progress bars
 - [x] File browser integration
-- [ ] Real-time status updates with tqdm
 
 ### Milestone 3: Compilation Feature
 - [ ] Video selection interface
@@ -101,22 +99,17 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Preview functionality
 - [ ] Output format configuration
 - [ ] Upload compiled video with template
+- [ ] Real-time status updates with tqdm (or any library/module)
 
 ### Milestone 4: Core Uploader
 - [ ] YouTube API auth setup (OAuth 2.0)
 - [ ] Single video upload with requests
 - [ ] Bulk folder upload
+- [ ] Upload queue + progress bars
 - [ ] JSON/YAML config for title/description/tags
 - [ ] Metadata template system
 
-### Milestone 5: Scheduling + Polish
-- [ ] Support `publishAt` scheduling
-- [ ] Thumbnail generation with Pillow
-- [ ] Upload progress tracking
-- [ ] Logs + error retries
-- [ ] CSV manifest support
-
-### Milestone 6: Access Control System
+### Milestone 5: Access Control System
 - [ ] Firebase project setup
 - [ ] Enable Authentication & Firestore
 - [ ] Implement Login / Signup / Logout
@@ -132,6 +125,13 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Admin ban/unban users
 - [ ] Firestore security rules by role
 - [ ] Comprehensive role testing & bypass attempts
+
+### Milestone 6: Scheduling + Polish
+- [ ] Support `publishAt` scheduling
+- [ ] Thumbnail generation with Pillow
+- [ ] Upload progress tracking
+- [ ] Logs + error retries
+- [ ] CSV manifest support
 
 ### Milestone 7: Distribution
 - [ ] Package with Flet pack / PyInstaller

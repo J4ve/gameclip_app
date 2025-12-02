@@ -172,7 +172,7 @@ class SelectionScreen:
                 [
                     # Header
                     ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Text(f"Supported formats: {', '.join(Config.SUPPORTED_VIDEO_FORMATS)}", size=12),
+                    ft.Text(f"Supported formats: .mp4, .mkv, .mov, .avi, and more…", size=12),
 
                     ft.Container(height=20),  # Spacer
 
