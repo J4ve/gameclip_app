@@ -6,7 +6,7 @@ import subprocess
 import os
 from pathlib import Path
 from datetime import datetime
-from typing import List, Callable, Optional
+from typing import List, Optional, Callable
 import threading
 
 
@@ -36,8 +36,8 @@ class VideoProcessor:
         output_path: str,
         codec: str = "H.264",
         video_format: str = ".mp4",
-        progress_callback: Optional[Callable[[int, str]]] = None,
-        completion_callback: Optional[Callable[[bool, str]]] = None
+        progress_callback: Optional[Callable] = None,
+        completion_callback: Optional[Callable] = None
     ):
         """
         Merge multiple videos into one using FFmpeg
@@ -48,11 +48,11 @@ class VideoProcessor:
             codec: Video codec to use
             video_format: Output format (e.g., ".mp4")
             progress_callback: Function to call with progress updates (percentage, message)
-            completion_callback: Function to call when complete (success, message)
+            completion_callback: Function to call when complete (success, message, output_path)
         """
         if not video_paths:
             if completion_callback:
-                completion_callback(False, "No videos to merge")
+                completion_callback(False, "No videos to merge", None)
             return
         
         # Run in separate thread to avoid blocking UI
@@ -74,11 +74,19 @@ class VideoProcessor:
     ):
         """Internal thread function for video merging"""
         self.is_processing = True
+        output_file = None
         
         try:
-            # Create output filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = f"{output_path}_{timestamp}{video_format}"
+            # Create output filename with timestamp if not already timestamped
+            if not any(datetime.now().strftime("%Y%m%d") in output_path for _ in [1]):
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                output_file = f"{output_path}_{timestamp}{video_format}"
+            else:
+                output_file = f"{output_path}{video_format}"
+            
+            # Ensure output directory exists
+            output_dir = Path(output_file).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
             
             # Create concat file for FFmpeg
             concat_file = self._create_concat_file(video_paths)
@@ -151,15 +159,15 @@ class VideoProcessor:
                 if progress_callback:
                     progress_callback(100, "Merge complete!")
                 if completion_callback:
-                    completion_callback(True, f"Video saved: {output_file}")
+                    completion_callback(True, f"Video saved: {output_file}", output_file)
             else:
                 error_msg = "FFmpeg process failed"
                 if completion_callback:
-                    completion_callback(False, error_msg)
+                    completion_callback(False, error_msg, None)
                     
         except Exception as e:
             if completion_callback:
-                completion_callback(False, f"Error: {str(e)}")
+                completion_callback(False, f"Error: {str(e)}", None)
         finally:
             self.is_processing = False
             self.current_process = None
