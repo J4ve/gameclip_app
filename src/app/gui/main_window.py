@@ -16,12 +16,12 @@ class MainWindow:
     def __init__(self, page: ft.Page):
         self.page = page
         self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
-        self.selected_videos = []  # Shared state across screens
+        self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
         print(f"SelectionScreen created: {self.selection_screen}")
-        self.arrangement_screen = ArrangementScreen() #arrangement screen
-        self.save_upload_screen = SaveUploadScreen() #save/upload screen
+        self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
+        self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
 
         # stepper indicator thingies
         # Step 1: Select Videos
@@ -128,6 +128,10 @@ class MainWindow:
             if self.current_step == 1:
                 self.arrangement_screen.set_videos(self.selection_screen.selected_files)
                 self.arrangement_screen.main_window = self  # Pass reference to main window
+
+            elif self.current_step == 2:
+                self.save_upload_screen.set_videos(self.arrangement_screen.videos)
+                self.save_upload_screen.main_window = self
             
             self.go_to_step(self.current_step)
         

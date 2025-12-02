@@ -8,7 +8,8 @@ import flet as ft
 class ArrangementScreen:
     """Second screen: Arrange clips and preview"""
     
-    def __init__(self, videos=None, on_next=None, on_back=None):
+    def __init__(self, page=None, videos=None, on_next=None, on_back=None):
+        self.page = page
         self.videos = videos or []
         self.on_next = on_next
         self.on_back = on_back
@@ -56,7 +57,7 @@ class ArrangementScreen:
 
         # --------------------------------
 
-        # Left panel - Video list (Same as before)
+        # Left panel - Video list 
         video_list_panel = ft.Container(
             content=ft.Column([
                 ft.Text("Video List", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
@@ -102,7 +103,7 @@ class ArrangementScreen:
             border_radius=10,
         )
         
-        # Top right - "Arrange By" dropdown (Same as before)
+        # Top right - "Arrange By" dropdown 
         arrange_by_dropdown = ft.Dropdown(
             options=[
                 ft.dropdown.Option("Name"),
@@ -139,10 +140,7 @@ class ArrangementScreen:
             expand=True,
         )
     
-    # ... (Rest of your methods: _update_video_list, _select_video, etc. remain exactly the same)
-    
     def _update_video_list(self):
-        # COPY YOUR EXISTING CODE HERE
         self.file_list.controls.clear()
         
         if not self.videos:
@@ -182,12 +180,11 @@ class ArrangementScreen:
         if 0 <= index < len(self.videos):
             self.selected_video_index = index
             self._update_video_list()
-            # Because you are calling main_window.go_to_step(1), 
+            # Because its calling main_window.go_to_step(1), 
             # the build() method runs again, creating a NEW ft.Video with the new path
             if self.main_window:
                 self.main_window.go_to_step(1)
 
-    # ... Include _move_video, _remove_video, _sort_videos, set_videos as they were ...
     def _move_video(self, from_index, to_index):
         if 0 <= to_index < len(self.videos):
             self.videos.insert(to_index, self.videos.pop(from_index))
