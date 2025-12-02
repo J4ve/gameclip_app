@@ -53,6 +53,14 @@ class SaveUploadScreen:
         Path(self.output_directory).mkdir(parents=True, exist_ok=True)
         Path(self.cache_directory).mkdir(parents=True, exist_ok=True)
 
+
+        # Preview text label
+        self.preview_text_label = ft.Text(
+            "Preview will appear when ready",
+            color=ft.Colors.GREY_400,
+            size=12,
+        )
+
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
@@ -72,7 +80,7 @@ class SaveUploadScreen:
         return True
     
     def _merge_preview(self):
-        """Merge videos for preview (cached in background)"""
+        """Merge videos for preview (cached in background with downscaling)"""
         if not self.videos:
             return
         
@@ -83,7 +91,7 @@ class SaveUploadScreen:
             self.is_merging_preview = False
             return
         
-        # Create cache filename
+        # Create cache filename with timestamp
         cache_filename = f"preview_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         cache_path = str(Path(self.cache_directory) / cache_filename)
         
@@ -96,32 +104,34 @@ class SaveUploadScreen:
         if self.page:
             self.page.update()
         
-        # Start merge
-        self.video_processor.merge_videos(
+        # Start merge using cache processor (with downscaling)
+        self.video_processor.merge_and_cache(
             video_paths=self.videos,
-            output_path=cache_path,
-            codec="H.264",  # Fast codec for preview
-            video_format=".mp4",
+            cache_path=cache_path,
             progress_callback=self._update_preview_progress,
             completion_callback=self._preview_merge_complete
         )
-    
+
     def _update_preview_progress(self, percentage: int, message: str):
         """Update progress for preview merge"""
-        if self.progress_bar:
-            self.progress_bar.value = percentage / 100
         if self.progress_text:
-            self.progress_text.value = f"Preview: {message}"
+            self.preview_text_label.value = f"Preview: {message}"
         if self.page:
             self.page.update()
     
     def _preview_merge_complete(self, success: bool, message: str, output_path: str):
-        """Handle preview merge completion"""
+        """Handle preview merge completion - display the cached video"""
         self.is_merging_preview = False
         
         if success and output_path:
             self.cached_preview_path = output_path
-            self._show_preview_video(output_path)
+            # Check if cache file exists before trying to display
+            if Path(output_path).exists():
+                self._show_preview_video(output_path)
+            else:
+                if self.progress_text:
+                    self.progress_text.value = "Preview file created but not accessible"
+                    self.progress_text.visible = False
         else:
             if self.progress_text:
                 self.progress_text.value = "Preview unavailable"
@@ -132,6 +142,27 @@ class SaveUploadScreen:
             self.progress_bar.visible = False
         if self.page:
             self.page.update()
+    
+    def _monitor_cache_file(self, cache_path: str, check_interval: float = 2.0):
+        """Monitor cache file and update preview once it has content"""
+        last_size = 0
+        min_file_size = 500000  # 500KB minimum before showing preview
+        
+        while self.is_merging_preview:
+            try:
+                if Path(cache_path).exists():
+                    current_size = Path(cache_path).stat().st_size
+                    
+                    # Update preview once file is large enough
+                    if current_size > min_file_size and current_size > last_size:
+                        # Only update preview if it hasn't been set yet
+                        if not self.cached_preview_path:
+                            self.cached_preview_path = cache_path
+                            self._show_preview_video(cache_path)
+                    
+                    last_size = current_size
+            except Exception:
+                pass
     
     def _show_preview_video(self, video_path: str):
         """Display the preview video"""
@@ -154,6 +185,8 @@ class SaveUploadScreen:
         self.preview_container.content = self.preview_video
         if self.page:
             self.page.update()
+
+        self.preview_text_label.visible = False
         
     def build(self):
         """Build and return save/upload screen layout"""
@@ -306,10 +339,11 @@ class SaveUploadScreen:
         num_videos = len(self.videos)
         video_list_height = min(max(num_videos * 40, 80), 200)
 
+
         # Preview container
         preview_content = ft.Column([
             ft.Icon(ft.Icons.VIDEOCAM, size=48, color=ft.Colors.GREY_400),
-            ft.Text("Generating preview...", color=ft.Colors.GREY_400, size=12),
+            self.preview_text_label,
         ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
         
         if self.cached_preview_path:
@@ -427,33 +461,13 @@ class SaveUploadScreen:
         dir_picker.get_directory_path(dialog_title="Select output directory")
     
     def _handle_save(self, e):
-        """Handle save button click - save the cached preview or merge again"""
+        """Handle save button click - show confirmation with final settings"""
         if not self.videos:
             self._show_error("No videos to save")
             return
         
-        # If we have a cached preview, just copy it
-        if self.cached_preview_path and Path(self.cached_preview_path).exists():
-            self._save_cached_video()
-        else:
-            # Merge again if no cache
-            self._merge_final_video()
-    
-    def _save_cached_video(self):
-        """Save the cached preview video to final location"""
-        try:
-            filename = self.filename_field.value or "merged_video"
-            video_format = self.format_dropdown.value
-            output_file = str(Path(self.output_directory) / f"{filename}{video_format}")
-            
-            # Copy cached file to final location
-            import shutil
-            shutil.copy2(self.cached_preview_path, output_file)
-            
-            self._show_success(f"Video saved: {output_file}")
-            
-        except Exception as e:
-            self._show_error(f"Error saving video: {str(e)}")
+        # Show confirmation dialog with final merge settings
+        self._show_save_confirmation()
     
     def _merge_final_video(self):
         """Merge videos for final save"""
@@ -523,6 +537,64 @@ class SaveUploadScreen:
             self._show_success(message)
         else:
             self._show_error(message)
+    
+    def _show_save_confirmation(self):
+        """Show confirmation dialog with final merge settings"""
+        filename = self.filename_field.value or "merged_video"
+        codec = self.codec_dropdown.value
+        video_format = self.format_dropdown.value
+        output_path = str(Path(self.output_directory) / f"{filename}{video_format}")
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Save Confirmation"),
+            content=ft.Column([
+                ft.Text("Final merge will use:", size=14, weight=ft.FontWeight.BOLD),
+                ft.Divider(height=10),
+                ft.Row([
+                    ft.Text("Filename:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(f"{filename}{video_format}", color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("Codec:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(codec, color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("Format:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(video_format, color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("Location:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(output_path, color=ft.Colors.CYAN, size=10),
+                ]),
+                ft.Divider(height=10),
+                ft.Text(
+                    f"This will merge {len(self.videos)} video(s) with your specified settings.",
+                    size=12,
+                    color=ft.Colors.GREY_400
+                ),
+            ], spacing=8, tight=True),
+            actions=[
+                ft.TextButton(
+                    "Cancel",
+                    on_click=lambda _: self._close_dialog(dialog)
+                ),
+                ft.TextButton(
+                    "Save",
+                    on_click=lambda _: self._confirm_save(dialog)
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _confirm_save(self, dialog):
+        """Confirm and start final merge"""
+        self._close_dialog(dialog)
+        self._merge_final_video()
     
     def _open_upload_settings_dialog(self, e):
         """Open dialog to edit upload settings"""
