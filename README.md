@@ -168,7 +168,7 @@ source env/bin/activate
 
 **Option 1: Install directly (recommended for development)**
 ```bash
-pip install flet ffmpeg-python pillow requests tqdm pytest
+pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 ```
 
 **Option 2: Use requirements file**
