@@ -6,6 +6,11 @@ import flet as ft
 from configs.config import Config
 from datetime import datetime
 from pathlib import Path
+import sys
+import os
+
+# Add src/ to sys.path so we can import uploader modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
 
 
 class SaveUploadScreen:
@@ -31,6 +36,7 @@ class SaveUploadScreen:
         self.tags_field = None
         self.visibility_dropdown = None
         self.description_field = None
+        self.made_for_kids_checkbox = None
         
         # Progress tracking
         self.progress_bar = None
@@ -46,6 +52,11 @@ class SaveUploadScreen:
         # Cached merged video (preview)
         self.cached_preview_path = None
         self.is_merging_preview = False
+        
+        # YouTube upload
+        self.youtube_service = None
+        self.merged_video_path = None
+        self.is_uploading = False
         
         # Output paths
         self.output_directory = str(Path.home() / "Videos" / "VideoMerger")
@@ -261,6 +272,10 @@ class SaveUploadScreen:
             min_lines=3,
             max_lines=5
         )
+        self.made_for_kids_checkbox = ft.Checkbox(
+            label="This video is made for kids (COPPA)",
+            value=False
+        )
         
         upload_settings_section = ft.Column([
             ft.Text("Upload Settings", size=16, weight=ft.FontWeight.BOLD),
@@ -312,7 +327,7 @@ class SaveUploadScreen:
             on_click=self._handle_upload,
             height=45,
             width=150,
-            disabled=True  # TODO: Enable when YouTube API is implemented
+            disabled=False
         )
         
         self.cancel_button = ft.ElevatedButton(
@@ -496,8 +511,12 @@ class SaveUploadScreen:
     
     def _handle_upload(self, e):
         """Handle upload button - save and upload to YouTube"""
-        # TODO: Implement YouTube upload after video merge
-        self._show_error("YouTube upload not yet implemented")
+        if not self.videos:
+            self._show_error("No videos to upload")
+            return
+        
+        # Show upload confirmation dialog
+        self._show_upload_confirmation()
     
     def _handle_cancel(self, e):
         """Cancel ongoing merge operation"""
@@ -517,7 +536,7 @@ class SaveUploadScreen:
         if self.save_button:
             self.save_button.disabled = show
         if self.upload_button:
-            self.upload_button.disabled = True  # Keep disabled for now
+            self.upload_button.disabled = show
         if self.page:
             self.page.update()
     
@@ -534,8 +553,14 @@ class SaveUploadScreen:
         self._show_progress(False)
         
         if success:
-            self._show_success(message)
+            self.merged_video_path = output_path
+            if self.is_uploading:
+                # Continue with upload after merge
+                self._start_upload()
+            else:
+                self._show_success(message)
         else:
+            self.is_uploading = False
             self._show_error(message)
     
     def _show_save_confirmation(self):
@@ -602,14 +627,19 @@ class SaveUploadScreen:
             modal=True,
             title=ft.Text("Upload Settings"),
             content=ft.Column([
+                ft.Text("Video Metadata", weight=ft.FontWeight.BOLD, size=14),
                 self.title_field,
                 self.description_field,
                 self.tags_field,
                 self.visibility_dropdown,
-            ], spacing=10, tight=True),
+                
+                ft.Divider(height=20),
+                ft.Text("Privacy & Compliance", weight=ft.FontWeight.BOLD, size=14),
+                self.made_for_kids_checkbox,
+            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO),
             actions=[
-                ft.TextButton("Save", on_click=lambda _: self._close_dialog(dialog)),
                 ft.TextButton("Cancel", on_click=lambda _: self._close_dialog(dialog)),
+                ft.TextButton("Save", on_click=lambda _: self._close_dialog(dialog)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
         )
@@ -652,3 +682,256 @@ class SaveUploadScreen:
         self.page.overlay.append(snackbar)
         snackbar.open = True
         self.page.update()
+    
+    def _show_upload_success(self, video_id: str):
+        """Show upload success dialog"""
+        video_url = f"https://youtube.com/watch?v={video_id}"
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Upload Successful!", color=ft.Colors.GREEN),
+            content=ft.Column([
+                ft.Text("Your video has been uploaded to YouTube.", size=14),
+                ft.Divider(height=10),
+                ft.Row([
+                    ft.Text("Video ID:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(video_id, color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("URL:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(video_url, color=ft.Colors.CYAN, size=10),
+                ]),
+            ], spacing=10, tight=True),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _show_upload_error(self, error_message: str):
+        """Show upload error dialog"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Upload Failed", color=ft.Colors.RED),
+            content=ft.Column([
+                ft.Text("An error occurred while uploading:", size=14),
+                ft.Divider(height=10),
+                ft.Text(
+                    error_message,
+                    size=12,
+                    color=ft.Colors.ORANGE,
+                    selectable=True
+                ),
+            ], spacing=10, tight=True),
+            actions=[
+                ft.TextButton("Retry", on_click=lambda _: self._retry_upload(dialog)),
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _retry_upload(self, dialog):
+        """Retry upload after error"""
+        self._close_dialog(dialog)
+        self.is_uploading = True
+        self._upload_to_youtube()
+    
+    def _show_upload_confirmation(self):
+        """Show confirmation dialog for upload"""
+        filename = self.filename_field.value or "merged_video"
+        title = self.title_field.value or filename
+        description = self.description_field.value or "Uploaded via VideoMerger App"
+        tags = self.tags_field.value or "videomerger,app"
+        visibility = self.visibility_dropdown.value.lower()
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Upload to YouTube"),
+            content=ft.Column([
+                ft.Text("Video will be merged and uploaded with:", size=14, weight=ft.FontWeight.BOLD),
+                ft.Divider(height=10),
+                ft.Row([
+                    ft.Text("Title:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(title, color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("Visibility:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(visibility.title(), color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("Tags:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(tags, color=ft.Colors.CYAN),
+                ]),
+                ft.Divider(height=10),
+                ft.Text(
+                    "This will first merge your videos, then upload to YouTube.",
+                    size=12,
+                    color=ft.Colors.GREY_400
+                ),
+                ft.Text(
+                    "You'll be asked to sign in to your YouTube account.",
+                    size=12,
+                    color=ft.Colors.YELLOW
+                ),
+            ], spacing=8, tight=True),
+            actions=[
+                ft.TextButton(
+                    "Cancel",
+                    on_click=lambda _: self._close_dialog(dialog)
+                ),
+                ft.TextButton(
+                    "Upload",
+                    on_click=lambda _: self._confirm_upload(dialog)
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _confirm_upload(self, dialog):
+        """Confirm and start merge + upload process"""
+        self._close_dialog(dialog)
+        self.is_uploading = True
+        
+        # Check if video is already merged
+        if self.merged_video_path and Path(self.merged_video_path).exists():
+            self._start_upload()
+        else:
+            # Need to merge first
+            self._merge_final_video()
+    
+    def _start_upload(self):
+        """Start YouTube upload process"""
+        self._update_progress(10, "Preparing upload...")
+        self._show_progress(True)
+        
+        # Upload video directly
+        self._upload_to_youtube()
+    
+    def _upload_to_youtube(self):
+        """Upload merged video to YouTube using uploader module"""
+        if not self.merged_video_path:
+            self._show_error("Video file not available")
+            return
+        
+        try:
+            from uploader.uploader import YouTubeUploader, UploadSettings
+            from uploader.metadata import build_metadata_from_form
+            
+            # Create uploader instance
+            uploader = YouTubeUploader()
+            
+            # Authenticate with YouTube
+            self._update_progress(20, "Authenticating with YouTube...")
+            uploader.authenticate()
+            
+            # Get upload settings from form
+            metadata = build_metadata_from_form(
+                title=self.title_field.value or "Merged Video",
+                description=self.description_field.value or "Uploaded via VideoMerger App",
+                tags=self.tags_field.value or "",
+                visibility=self.visibility_dropdown.value.lower(),
+                made_for_kids=self.made_for_kids_checkbox.value
+            )
+
+            settings = UploadSettings(
+                title=metadata.title,
+                description=metadata.description,
+                tags=metadata.tags,
+                visibility=metadata.visibility,
+                made_for_kids=metadata.made_for_kids
+            )
+            
+            self._update_progress(40, "Uploading to YouTube...")
+            
+            # Upload video with progress callback
+            result = uploader.upload_video(
+                video_path=self.merged_video_path,
+                settings=settings,
+                progress_callback=lambda p, m: self._update_progress(int(40 + p * 0.6), m)
+            )
+            
+            self._update_progress(100, "Upload complete!")
+            self._show_progress(False)
+            self.is_uploading = False
+            
+            # Show success dialog
+            video_id = result.get('video_id')
+            self._show_upload_success(video_id)
+            
+        except Exception as e:
+            self.is_uploading = False
+            self._show_progress(False)
+            self._show_upload_error(str(e))
+    
+    def _show_upload_success(self, video_id: str):
+        """Show upload success dialog"""
+        video_url = f"https://youtube.com/watch?v={video_id}"
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Upload Successful!", color=ft.Colors.GREEN),
+            content=ft.Column([
+                ft.Text("Your video has been uploaded to YouTube.", size=14),
+                ft.Divider(height=10),
+                ft.Row([
+                    ft.Text("Video ID:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(video_id, color=ft.Colors.CYAN),
+                ]),
+                ft.Row([
+                    ft.Text("URL:", weight=ft.FontWeight.BOLD, width=100),
+                    ft.Text(video_url, color=ft.Colors.CYAN, size=10),
+                ]),
+            ], spacing=10, tight=True),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _show_upload_error(self, error_message: str):
+        """Show upload error dialog"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Upload Failed", color=ft.Colors.RED),
+            content=ft.Column([
+                ft.Text("An error occurred while uploading:", size=14),
+                ft.Divider(height=10),
+                ft.Text(
+                    error_message,
+                    size=12,
+                    color=ft.Colors.ORANGE,
+                    selectable=True
+                ),
+            ], spacing=10, tight=True),
+            actions=[
+                ft.TextButton("Retry", on_click=lambda _: self._retry_upload(dialog)),
+                ft.TextButton("Close", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _retry_upload(self, dialog):
+        """Retry upload after error"""
+        self._close_dialog(dialog)
+        self.is_uploading = True
+        self._upload_to_youtube()

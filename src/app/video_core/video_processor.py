@@ -145,9 +145,14 @@ class VideoProcessor:
                 "-c:a", "aac",  # Audio codec
                 "-strict", "experimental",
                 "-preset", "medium",  # Encoding speed/quality balance
+                "-vsync", "1",  # Fix frame sync issues
+                "-async", "1",  # Fix audio sync issues
+                "-avoid_negative_ts", "make_zero",  # Handle timestamp issues
+                "-fflags", "+genpts",  # Generate presentation timestamps
                 "-y",  # Overwrite output file
                 output_file
             ]
+            
             
             if progress_callback:
                 progress_callback(30, "Merging videos...")

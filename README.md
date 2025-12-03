@@ -86,13 +86,13 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Preview functionality
 - [x] Output format configuration
 
-### Milestone 4: Core Uploader
-- [ ] YouTube API auth setup (OAuth 2.0)
-- [ ] Single video upload with requests
-- [ ] Upload queue + progress bars
-- [ ] JSON/YAML config for title/description/tags
-- [ ] Upload compiled video with template
-- [ ] Metadata template system
+### Milestone 4: Core Uploader ✅
+- [x] YouTube API auth setup (OAuth 2.0)
+- [x] Video upload with requests
+- [x] Upload progress bars
+- [x] JSON/YAML config for title/description/tags
+- [x] Upload compiled video with template
+- [x] Metadata template system
 
 ### Milestone 5: Access Control System
 - [ ] Firebase project setup

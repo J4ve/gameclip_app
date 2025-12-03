@@ -1,6 +1,6 @@
 [project]
 name = "videomerger-app"
-version = "0.3.0"
+version = "0.4.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.9"
