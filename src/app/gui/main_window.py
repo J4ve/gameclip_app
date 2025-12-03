@@ -225,6 +225,7 @@ class MainWindow:
             ),
             right=30,
             bottom=40,
+            visible=(self.current_step != 2) # pag nasa last step, next button will disappear
         )
 
         # Back button at top left, small, icon only
