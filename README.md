@@ -7,7 +7,6 @@ An open-source desktop tool for streamers and video editors to automatically upl
 ---
 
 ## ✨ Features (Planned)
-- **Bulk Upload**: Upload multiple clips at once with template-based titles, descriptions, and tags.
 - **Config Profiles**: Save specific settings (tags, titles, playlists).
 - **Manifest Support**: Use CSV/JSON files to define metadata, publish dates, and highlight flags.
 - **Compilation Mode**: Automatically merge selected clips into a single highlight video using FFmpeg.
@@ -31,7 +30,7 @@ An open-source desktop tool for streamers and video editors to automatically upl
 - `ffmpeg-python` - Python bindings for FFmpeg
 - `pillow` - Image processing (thumbnails)
 - `requests` - HTTP library for API calls
-- `tqdm` - Progress bars for uploads
+- `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
 
 **Configuration & Data**
 - JSON/YAML (templates, profiles)
@@ -102,7 +101,6 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ### Milestone 4: Core Uploader
 - [ ] YouTube API auth setup (OAuth 2.0)
 - [ ] Single video upload with requests
-- [ ] Bulk folder upload
 - [ ] Upload queue + progress bars
 - [ ] JSON/YAML config for title/description/tags
 - [ ] Upload compiled video with template
