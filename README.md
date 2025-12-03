@@ -1,18 +1,8 @@
 # 🎮 Video Merger and Uploader
 
-An open-source desktop tool for streamers and video editors to automatically upload bulk clips and VODs to YouTube — no manual renaming, no repetitive settings, and optional automatic highlight compilations.
+An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube — no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
 
 > **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./Group7_LTSRS.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
-
----
-
-## ✨ Features (Planned)
-- **Config Profiles**: Save specific settings (tags, titles, playlists).
-- **Manifest Support**: Use CSV/JSON files to define metadata, publish dates, and highlight flags.
-- **Compilation Mode**: Automatically merge selected clips into a single highlight video using FFmpeg.
-- **Thumbnail Automation**: Generate thumbnails from video frames if none are provided.
-- **Scheduling**: Spread uploads over time using YouTube's `publishAt` scheduling.
-- **GUI (Flet)**: Drag & drop interface, upload queue visualization, and progress bars.
 
 ---
 
@@ -28,7 +18,6 @@ An open-source desktop tool for streamers and video editors to automatically upl
 **Key Dependencies**
 - `flet` - Cross-platform GUI framework
 - `ffmpeg-python` - Python bindings for FFmpeg
-- `pillow` - Image processing (thumbnails)
 - `requests` - HTTP library for API calls
 - `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
 
@@ -140,6 +129,20 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ---
 
 ## 📦 Installation & Setup
+
+### API Credentials (YouTube)
+
+You must provide your own YouTube API OAuth credentials for uploads. The file `src/uploader/client_secret.json` **should NOT be committed to Git or shared publicly.**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select your existing one)
+3. Enable the YouTube Data API v3
+4. Go to "APIs & Services" → "Credentials"
+5. Create OAuth 2.0 Client ID (Desktop app)
+6. Download the `client_secret.json` file
+7. Place it in `src/uploader/client_secret.json`
+8. **Do not commit this file to Git!**
+9. If you ever accidentally commit it, delete it from Git history and regenerate credentials in Google Cloud Console.
 
 ### Clone the repository
 ```bash
