@@ -18,7 +18,6 @@ An open-source desktop tool for streamers and video editors to automatically upl
 **Key Dependencies**
 - `flet` - Cross-platform GUI framework
 - `ffmpeg-python` - Python bindings for FFmpeg
-- `requests` - HTTP library for API calls
 - `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
 
 **Configuration & Data**
