@@ -161,3 +161,9 @@ cython_debug/
 
 # Flet
 storage/
+
+# OAuth & Secrets
+src/uploader/client_secret.json
+src/uploader/token.json
+*.secret.json
+credentials/
