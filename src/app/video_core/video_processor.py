@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Callable
 import threading
-from app.cache_processor import CacheProcessor, CacheSettings
+from .cache_processor import CacheProcessor, CacheSettings
 
 
 class VideoProcessor:

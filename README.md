@@ -95,11 +95,9 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 
 ### Milestone 3: Compilation Feature
 - [x] Video selection interface
-- [ ] FFmpeg integration for merging clips
-- [ ] Preview functionality
-- [ ] Output format configuration
-- [ ] Upload compiled video with template
-- [ ] Real-time status updates with tqdm (or any library/module)
+- [x] FFmpeg integration for merging clips
+- [x] Preview functionality
+- [x] Output format configuration
 
 ### Milestone 4: Core Uploader
 - [ ] YouTube API auth setup (OAuth 2.0)
@@ -107,6 +105,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Bulk folder upload
 - [ ] Upload queue + progress bars
 - [ ] JSON/YAML config for title/description/tags
+- [ ] Upload compiled video with template
 - [ ] Metadata template system
 
 ### Milestone 5: Access Control System

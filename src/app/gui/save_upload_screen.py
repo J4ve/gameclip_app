@@ -70,7 +70,7 @@ class SaveUploadScreen:
     def _initialize_video_processor(self):
         """Lazy load video processor"""
         if self.video_processor is None:
-            from app.video_processor import VideoProcessor
+            from app.video_core.video_processor import VideoProcessor
             self.video_processor = VideoProcessor()
             
             # Check FFmpeg availability
