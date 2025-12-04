@@ -96,13 +96,13 @@ class SessionManager:
             return
         
         try:
-            # Check if user exists in Firebase
-            existing_user = firebase_service.get_user_data(uid)
-            
+            # Check if user exists in Firebase (query by UID)
+            existing_user = firebase_service.get_user_by_uid(uid)
+
             if existing_user:
-                # User exists - update last login
-                firebase_service.update_last_login(uid)
-                
+                # User exists - update last login (method accepts uid or email)
+                firebase_service.update_user_last_login(uid)
+
                 # Check if role needs updating
                 firebase_role = existing_user.get('role', 'normal')
                 if firebase_role != role.name:
@@ -113,11 +113,20 @@ class SessionManager:
                         print(f"Updated local role to match Firebase: {firebase_role}")
                     except ValueError:
                         print(f"Invalid Firebase role: {firebase_role}, keeping local role: {role.name}")
-                        firebase_service.update_user_role(uid, role.name)
+                        # Make sure Firebase has a valid role value (use email as document id)
+                        if email:
+                            firebase_service.update_user_role(email, role.name)
             else:
-                # New user - create document
-                firebase_service.create_user_document(uid, email, name, role.name)
-                
+                # New user - create document using create_user(dict)
+                user_doc = {
+                    'uid': uid,
+                    'email': email,
+                    'name': name,
+                    'role': role.name,
+                    'provider': 'google'
+                }
+                firebase_service.create_user(user_doc)
+
         except Exception as e:
             print(f"Error syncing with Firebase: {e}")
     
@@ -127,7 +136,7 @@ class SessionManager:
             return False
         
         firebase_service = self._get_firebase_service()
-        uid = self._current_user.get('uid')
+        email = self._current_user.get('email')
         
         try:
             # Update local role
@@ -135,8 +144,8 @@ class SessionManager:
             self._current_role = new_role_obj
             
             # Update Firebase if available
-            if firebase_service and firebase_service.is_available and uid:
-                firebase_service.update_user_role(uid, new_role)
+            if firebase_service and firebase_service.is_available and email:
+                firebase_service.update_user_role(email, new_role)
             
             print(f"User role updated to: {new_role}")
             return True
@@ -148,18 +157,20 @@ class SessionManager:
     def increment_merge_count(self):
         """Increment merge count in Firebase"""
         firebase_service = self._get_firebase_service()
-        uid = self.uid
-        
-        if firebase_service and firebase_service.is_available and uid:
-            firebase_service.increment_merge_count(uid)
+        email = self.email
+
+        if firebase_service and firebase_service.is_available and email:
+            # Map to generic usage increment in Firebase service
+            firebase_service.increment_usage_count(email)
     
     def increment_upload_count(self):
         """Increment upload count in Firebase"""
         firebase_service = self._get_firebase_service()
-        uid = self.uid
-        
-        if firebase_service and firebase_service.is_available and uid:
-            firebase_service.increment_upload_count(uid)
+        email = self.email
+
+        if firebase_service and firebase_service.is_available and email:
+            # Map to generic usage increment in Firebase service
+            firebase_service.increment_usage_count(email)
     
     def logout(self, clear_tokens: bool = True):
         """Clear user session and optionally clear OAuth tokens"""
@@ -252,19 +263,19 @@ class SessionManager:
     
     def is_admin(self) -> bool:
         """Check if user is admin"""
-        return self._current_role and self._current_role.role_type == RoleType.ADMIN
+        return bool(self._current_role and self._current_role.role_type == RoleType.ADMIN)
     
     def is_dev(self) -> bool:
         """Check if user is developer"""
-        return self._current_role and self._current_role.role_type == RoleType.DEV
+        return bool(self._current_role and self._current_role.role_type == RoleType.DEV)
     
     def is_premium(self) -> bool:
         """Check if user is premium"""
-        return self._current_role and self._current_role.role_type == RoleType.PREMIUM
+        return bool(self._current_role and self._current_role.role_type == RoleType.PREMIUM)
     
     def is_normal(self) -> bool:
         """Check if user is normal/standard user"""
-        return self._current_role and self._current_role.role_type == RoleType.NORMAL
+        return bool(self._current_role and self._current_role.role_type == RoleType.NORMAL)
     
     def get_user_display_info(self) -> Dict[str, str]:
         """Get formatted user info for display"""
@@ -279,7 +290,7 @@ class SessionManager:
         
         return {
             'email': self._current_user.get('email', 'Unknown'),
-            'name': self._current_user.get('name', None),  # Add name field
+            'name': self._current_user.get('name', 'Unknown'),  # Add name field
             'role': self._current_role.name.title(),
             'status': status,
             'permissions': f"{len(self._current_role.permissions)} permissions"
