@@ -163,7 +163,11 @@ cython_debug/
 storage/
 
 # OAuth & Secrets
-src/uploader/client_secret.json
-src/uploader/token.json
+configs/client_secret.json
+configs/firebase-admin-key.json
 *.secret.json
 credentials/
+
+# Firebase Secrets
+firebase-admin-key.json
+token.pickle

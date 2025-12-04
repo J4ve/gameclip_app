@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 import os
+from access_control.session import session_manager
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -277,13 +278,25 @@ class SaveUploadScreen:
             value=False
         )
         
+        # Upload Settings section - role-based restrictions
+        upload_enabled = session_manager.can_upload()
+        upload_status_text = ""
+        
+        if not upload_enabled:
+            if session_manager.is_guest:
+                upload_status_text = "⚠️ Guest users cannot upload. Login with Google to enable uploads."
+            else:
+                upload_status_text = "⚠️ Your account does not have upload permissions."
+        
         upload_settings_section = ft.Column([
             ft.Text("Upload Settings", size=16, weight=ft.FontWeight.BOLD),
             ft.Text("Configure metadata for YouTube upload", size=12, color=ft.Colors.GREY_400),
+            ft.Text(upload_status_text, size=11, color=ft.Colors.ORANGE_400, visible=not upload_enabled),
             ft.ElevatedButton(
                 "Edit Upload Settings",
                 icon=ft.Icons.EDIT,
-                on_click=self._open_upload_settings_dialog
+                on_click=self._open_upload_settings_dialog,
+                disabled=not upload_enabled
             ),
         ], spacing=10)
 
@@ -308,7 +321,15 @@ class SaveUploadScreen:
             self.progress_text,
         ], spacing=5)
 
-        # Buttons section
+        # Buttons section - with role-based restrictions
+        save_enabled = session_manager.can_save()
+        upload_enabled = session_manager.can_upload()
+        
+        # Add watermark warning for guests
+        watermark_warning = ""
+        if session_manager.has_watermark():
+            watermark_warning = "⚠️ Guest videos include watermark"
+        
         self.save_button = ft.ElevatedButton(
             "Save Video",
             icon=ft.Icons.SAVE,
@@ -316,18 +337,20 @@ class SaveUploadScreen:
             color=ft.Colors.WHITE,
             on_click=self._handle_save,
             height=45,
-            width=150
+            width=150,
+            disabled=not save_enabled
         )
         
+        upload_button_text = "Save & Upload" if upload_enabled else "Upload Disabled"
         self.upload_button = ft.ElevatedButton(
-            "Save & Upload",
-            icon=ft.Icons.UPLOAD,
-            bgcolor=ft.Colors.with_opacity(0.85, "#1976D2"),
+            upload_button_text,
+            icon=ft.Icons.UPLOAD if upload_enabled else ft.Icons.LOCK,
+            bgcolor=ft.Colors.with_opacity(0.85, "#1976D2") if upload_enabled else ft.Colors.with_opacity(0.5, "#666666"),
             color=ft.Colors.WHITE,
             on_click=self._handle_upload,
             height=45,
             width=150,
-            disabled=False
+            disabled=not upload_enabled
         )
         
         self.cancel_button = ft.ElevatedButton(
@@ -341,11 +364,20 @@ class SaveUploadScreen:
             visible=False
         )
         
-        buttons_section = ft.Row([
-            self.save_button,
-            self.upload_button,
-            self.cancel_button,
-        ], spacing=10, alignment=ft.MainAxisAlignment.CENTER)
+        # Role info section
+        role_info = ft.Column([
+            ft.Text(f"Role: {session_manager.role_name.title()}", size=12, color=ft.Colors.CYAN_400),
+            ft.Text(watermark_warning, size=10, color=ft.Colors.ORANGE_400, visible=bool(watermark_warning)),
+        ], spacing=2)
+        
+        buttons_section = ft.Column([
+            role_info,
+            ft.Row([
+                self.save_button,
+                self.upload_button,
+                self.cancel_button,
+            ], spacing=10, alignment=ft.MainAxisAlignment.CENTER)
+        ], spacing=10, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
         # Build video list
         video_list_controls = self._build_video_list()
@@ -381,9 +413,34 @@ class SaveUploadScreen:
             clip_behavior=ft.ClipBehavior.HARD_EDGE,
         )
 
-        # Main layout
-        return ft.Container(
-            content=ft.Row([
+        # Ad banner for non-premium users
+        ad_banner = None
+        if session_manager.has_ads():
+            ad_banner = ft.Container(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.AD_UNITS, color=ft.Colors.ORANGE_400),
+                    ft.Text(
+                        "Upgrade to Premium to remove ads and unlock unlimited features!",
+                        size=12,
+                        color=ft.Colors.ORANGE_400
+                    ),
+                    ft.TextButton(
+                        "Upgrade",
+                        on_click=lambda _: self._show_upgrade_message()
+                    )
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.ORANGE_700),
+                border=ft.border.all(1, ft.Colors.ORANGE_400),
+                border_radius=5,
+                padding=10,
+                margin=ft.margin.only(bottom=10)
+            )
+
+        # Main layout with optional ad banner
+        main_content = ft.Column([
+            # Add ad banner if user should see ads
+            *([ad_banner] if ad_banner else []),
+            ft.Row([
                 # Left column: Video list and preview
                 ft.Container(
                     content=ft.Column([
@@ -419,6 +476,11 @@ class SaveUploadScreen:
                     border_radius=10,
                 ),
             ], expand=True, spacing=15),
+        ], expand=True, spacing=0)
+
+        # Main layout
+        return ft.Container(
+            content=main_content,
             padding=20,
             expand=True,
         )
@@ -748,7 +810,8 @@ class SaveUploadScreen:
         """Show confirmation dialog for upload"""
         filename = self.filename_field.value or "merged_video"
         title = self.title_field.value or filename
-        description = self.description_field.value or "Uploaded via VideoMerger App"
+        description = (self.description_field.value 
+                       or "Uploaded via VideoMerger App\nGitHub: https://github.com/J4ve/videomerger_app"),
         tags = self.tags_field.value or "videomerger,app"
         visibility = self.visibility_dropdown.value.lower()
         
@@ -774,13 +837,9 @@ class SaveUploadScreen:
                 ft.Text(
                     "This will first merge your videos, then upload to YouTube.",
                     size=12,
-                    color=ft.Colors.GREY_400
-                ),
-                ft.Text(
-                    "You'll be asked to sign in to your YouTube account.",
-                    size=12,
                     color=ft.Colors.YELLOW
                 ),
+
             ], spacing=8, tight=True),
             actions=[
                 ft.TextButton(
@@ -832,14 +891,24 @@ class SaveUploadScreen:
             # Create uploader instance
             uploader = YouTubeUploader()
             
-            # Authenticate with YouTube
+            # Check if user is already authenticated through session
+            if not session_manager.is_logged_in:
+                self._show_error("Please login first")
+                return
+                
+            # Authenticate with YouTube - this will use browser OAuth
             self._update_progress(20, "Authenticating with YouTube...")
-            uploader.authenticate()
+            authenticated = uploader.authenticate()
+            
+            if not authenticated:
+                self._show_error("YouTube authentication failed")
+                return
             
             # Get upload settings from form
             metadata = build_metadata_from_form(
                 title=self.title_field.value or "Merged Video",
-                description=self.description_field.value or "Uploaded via VideoMerger App",
+                description=(self.description_field.value 
+                       or "Uploaded via VideoMerger App\nGitHub: https://github.com/J4ve/videomerger_app"),
                 tags=self.tags_field.value or "",
                 visibility=self.visibility_dropdown.value.lower(),
                 made_for_kids=self.made_for_kids_checkbox.value
@@ -935,3 +1004,10 @@ class SaveUploadScreen:
         self._close_dialog(dialog)
         self.is_uploading = True
         self._upload_to_youtube()
+
+    def _show_upgrade_message(self):
+        """Show upgrade message using snack bar"""
+        if self.page:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
+            self.page.snack_bar.open = True
+            self.page.update()

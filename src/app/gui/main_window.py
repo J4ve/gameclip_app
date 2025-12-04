@@ -8,6 +8,7 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
+from access_control.session import session_manager
 
 
 class MainWindow:
@@ -22,6 +23,10 @@ class MainWindow:
         print(f"SelectionScreen created: {self.selection_screen}")
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+
+        # User info components
+        self.user_info_text = None
+        self.logout_button = None
 
         # stepper indicator thingies
         # Step 1: Select Videos
@@ -184,7 +189,45 @@ class MainWindow:
             case 2:
                 content = self.save_upload_screen.build()
 
-        # TODO: Add settings button to open ConfigTab dialog
+        # User info section at top right
+        user_info = session_manager.get_user_display_info()
+        # Show user's name if available, otherwise fall back to email
+        display_name = user_info.get('name') or user_info.get('email', 'User')
+        self.user_info_text = ft.Text(
+            f"{display_name} ({user_info['role']})",
+            size=12,
+            color=ft.Colors.CYAN_400
+        )
+        
+        self.logout_button = ft.IconButton(
+            icon=ft.Icons.LOGOUT,
+            icon_color=ft.Colors.RED_400,
+            tooltip="Logout",
+            on_click=self._handle_logout,
+            width=30,
+            height=30
+        )
+        
+        self.settings_button = ft.IconButton(
+            icon=ft.Icons.SETTINGS,
+            icon_color=ft.Colors.GREY_400,
+            tooltip="Settings & Templates",
+            on_click=self._open_settings,
+            width=30,
+            height=30
+        )
+        
+        user_section = ft.Container(
+            content=ft.Row([
+                self.user_info_text,
+                self.settings_button,
+                self.logout_button
+            ], spacing=5, alignment=ft.MainAxisAlignment.END),
+            right=20,
+            top=20
+        )
+
+        # Settings dialog will be shown when settings button is clicked
 
         # build the stepper indicator
         stepper = ft.Container(
@@ -257,6 +300,7 @@ class MainWindow:
                 expand=True,
             ),
             self.next_button,  # Fixed position overlay
+            user_section,  # User info at top right
         ]
         if self.current_step > 0:
             stack_children.append(self.back_button)  # Show back button only if not at first step
@@ -264,3 +308,105 @@ class MainWindow:
             stack_children,
             expand=True,
         )
+    
+    def _handle_logout(self, e):
+        """Handle logout button click - default to keeping tokens"""
+        # Show simple confirmation dialog
+        def confirm_logout(e):
+            dialog.open = False
+            self.page.update()
+            
+            print("Logout confirmed - keeping tokens for quick re-login")
+            
+            # Logout but keep OAuth tokens (default behavior)
+            session_manager.logout(clear_tokens=False)
+            self._return_to_login()
+        
+        def cancel_logout(e):
+            dialog.open = False
+            self.page.update()
+        
+        # Get user display name safely
+        user_info = session_manager.get_user_display_info()
+        user_display = user_info.get('name') or user_info.get('email', 'User')
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Confirm Logout"),
+            content=ft.Text(f"Are you sure you want to logout {user_display}?\n\n(Your login credentials will be saved for quick re-login)"),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel_logout),
+                ft.TextButton("Logout", on_click=confirm_logout),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _return_to_login(self):
+        """Return to login screen after logout"""
+        print("Returning to login screen...")
+        self.page.clean()
+        self.page.update()
+        # Prevent duplicate login screens by cleaning overlays
+        self.page.overlay.clear()
+        self.page.update()
+        # Show login screen
+        from .login_screen import LoginScreen
+        def handle_login_complete(user_info, role):
+            print(f"Re-login complete: {user_info}, Role: {role.name}")
+            session_manager.login(user_info, role)
+            self.page.clean()
+            self.page.update()
+            try:
+                new_window = MainWindow(self.page)
+                main_layout = new_window.build()
+                self.page.add(main_layout)
+                self.page.update()
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
+                    action="OK"
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+            except Exception as ex:
+                print(f"Error recreating main window: {ex}")
+                self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
+                self.page.update()
+        login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+        login_ui = login_screen.build()
+        self.page.add(login_ui)
+        self.page.update()
+    
+    def _open_settings(self, e):
+        """Open settings dialog"""
+        def close_settings(e):
+            dialog.open = False
+            self.page.update()
+        
+        # Create config tab instance
+        config_tab = ConfigTab(self.page)
+        config_content = config_tab.build()
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.SETTINGS, color=ft.Colors.BLUE_400),
+                ft.Text("Settings & Configuration", size=18)
+            ], spacing=10),
+            content=ft.Container(
+                content=config_content,
+                width=800,
+                height=600,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=close_settings),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()

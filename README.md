@@ -69,7 +69,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ### Milestone 1: Project Setup & Foundation ✅
 - [x] Initialize repository structure
 - [x] Set up virtual environment
-- [x] Install core dependencies (flet, ffmpeg-python, pillow, requests, tqdm)
+- [x] Install core dependencies
 - [x] Create README documentation
 - [x] Set up GitHub repository with proper branching
 - [x] Create initial project structure (src/, tests/, configs/)
@@ -95,14 +95,14 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Metadata template system
 
 ### Milestone 5: Access Control System
-- [ ] Firebase project setup
+- [x] Firebase project setup
 - [ ] Enable Authentication & Firestore
-- [ ] Implement Login / Signup / Logout
-- [ ] Load user roles on login
-- [ ] Define roles: guest, user, premium, admin
+- [x] Implement Login / Signup / Logout
+- [x] Load user roles on login
+- [x] Define roles: guest, user, premium, admin
 - [ ] Create Firestore user documents
 - [ ] Apply custom role claims
-- [ ] Role-based UI restrictions
+- [x] Role-based UI restrictions
 - [ ] Guest/User: watermark + merge limits
 - [ ] Premium: full access, no watermark
 - [ ] Admin dashboard (view users)
@@ -110,6 +110,43 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Admin ban/unban users
 - [ ] Firestore security rules by role
 - [ ] Comprehensive role testing & bypass attempts
+
+#### Python/Firebase Access Control Integration
+This project uses a modular Python/Flet system for secure, role-based user management via Firebase Authentication and Firestore:
+- **Email/password authentication** (Firebase)
+- **Role assignment**: guest, normal, premium, dev, admin
+- **Session management** and custom claims
+- **Firestore security rules** for data protection
+- **Flet UI screens** for login, registration, and role-based access
+
+**Setup Steps:**
+1. Create a Firebase project and enable Authentication (Email/Password) and Firestore.
+2. Download your `firebase_config.json` and place it in `src/access_control/config/` (never commit secrets; use `.gitignore`).
+3. Install dependencies: `pip install pyrebase4 firebase-admin flet`
+4. Copy `src/access_control/security/firestore.rules` to your Firebase project.
+5. Integrate with Flet using `src/access_control/gui/example_integration.py` and the modules in `src/access_control/auth/`.
+
+**Usage Example:**
+```python
+from access_control.auth.firebase_auth import FirebaseAuth
+from access_control.auth.user_session import UserSession
+from access_control.gui.login_screen import LoginScreen
+
+firebase_auth = FirebaseAuth(config_path='config/firebase_config.json')
+login_screen = LoginScreen(firebase_auth)
+session = UserSession(firebase_auth)
+role = session.get_role()
+if role == 'admin':
+    # Show admin features
+    pass
+```
+
+**Security Notes:**
+- Never commit secrets; always use `.gitignore` for config files.
+- Roles are managed via Firebase custom claims and Firestore documents.
+- User sessions are handled securely in Python; tokens are refreshed as needed.
+
+For more details, see `src/access_control/README.md` and subdirectory documentation.
 
 ### Milestone 6: Scheduling + Polish
 - [ ] Support `publishAt` scheduling
@@ -168,7 +205,7 @@ source env/bin/activate
 
 **Option 1: Install directly (recommended for development)**
 ```bash
-pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client firebase-admin pyrebase4
 ```
 
 **Option 2: Use requirements file**
