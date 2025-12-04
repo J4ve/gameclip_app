@@ -49,7 +49,7 @@ class LoginScreen:
             width=300
         )
         
-        self.error_text = ft.Text("", color=ft.colors.RED, size=12)
+        self.error_text = ft.Text("", color=ft.Colors.RED, size=12)
         
         login_button = ft.ElevatedButton(
             "Sign In",
@@ -59,7 +59,7 @@ class LoginScreen:
         
         google_button = ft.ElevatedButton(
             "Sign in with Google",
-            icon=ft.icons.LOGIN,
+            icon=ft.Icons.LOGIN,
             on_click=self._handle_google_login,
             width=300
         )
@@ -72,7 +72,7 @@ class LoginScreen:
         return ft.Container(
             content=ft.Column([
                 ft.Text("Video Merger App", size=24, weight=ft.FontWeight.BOLD),
-                ft.Text("Sign in to upload videos", size=14, color=ft.colors.GREY),
+                ft.Text("Sign in to upload videos", size=14, color=ft.Colors.GREY),
                 ft.Container(height=20),
                 self.email_field,
                 self.password_field,
@@ -83,7 +83,7 @@ class LoginScreen:
                 google_button,
                 signup_button,
                 ft.Container(height=20),
-                ft.Text("Guest mode: Limited features with ads", size=12, color=ft.colors.GREY),
+                ft.Text("Guest mode: Limited features with ads", size=12, color=ft.Colors.GREY),
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
             alignment=ft.alignment.center,
             expand=True
