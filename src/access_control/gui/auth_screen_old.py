@@ -88,43 +88,7 @@ class LoginScreen:
             bgcolor=ft.Colors.GREY_900
         )
         
-        # Google login section
-        self.email_field = ft.TextField(
-            label="Email",
-            prefix_icon=ft.Icons.EMAIL,
-            width=300,
-            bgcolor=ft.Colors.GREY_800,
-            border_color=ft.Colors.GREY_600
-        )
-        
-        self.password_field = ft.TextField(
-            label="Password",
-            prefix_icon=ft.Icons.LOCK,
-            password=True,
-            can_reveal_password=True,
-            width=300,
-            bgcolor=ft.Colors.GREY_800,
-            border_color=ft.Colors.GREY_600,
-            on_submit=self._handle_google_login
-        )
-        
-        self.login_button = ft.ElevatedButton(
-            "Login with Google",
-            icon=ft.Icons.LOGIN,
-            on_click=self._handle_google_login,
-            style=ft.ButtonStyle(
-                bgcolor=ft.Colors.BLUE_600,
-                color=ft.Colors.WHITE,
-                padding=ft.padding.symmetric(horizontal=20, vertical=10)
-            ),
-            width=200
-        )
-        
-        self.register_button = ft.TextButton(
-            "Create Account",
-            on_click=self._handle_register,
-            style=ft.ButtonStyle(color=ft.Colors.BLUE_400)
-        )
+        # Google OAuth components will be created in build method
         
         # Loading indicator
         self.loading_ring = ft.ProgressRing(visible=False, width=20, height=20)
@@ -223,104 +187,63 @@ class LoginScreen:
             print(f"Guest login exception: {ex}")
             self._show_error(f"Guest login failed: {str(ex)}")
     
-    def _handle_google_login(self, e):
-        """Handle Google/Firebase login"""
+    def _handle_google_oauth(self, e):
+        """Handle real Google OAuth using YouTube auth system"""
         if self.is_logging_in:
             return
-        
-        email = self.email_field.value.strip()
-        password = self.password_field.value.strip()
-        
-        if not email or not password:
-            self._show_error("Please enter email and password")
-            return
-        
-        # Initialize Firebase if needed
-        if not self.firebase_auth:
-            if not self._initialize_firebase():
-                self._show_error("Firebase not configured. Please set up firebase_config.json")
-                return
         
         self._set_loading(True)
         
         try:
-            # Attempt login with Firebase
-            user_info = self.firebase_auth.sign_in(email, password)
+            # Use the existing YouTube OAuth system
+            import sys
+            import os
+            sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
+            from uploader.auth import get_youtube_service
             
-            if user_info:
-                # Get user role from Firebase custom claims or Firestore
-                role_name = user_info.get('role', 'normal')  # Default to normal
-                role = RoleManager.create_role_by_name(role_name)
+            # This will open browser for OAuth
+            youtube_service = get_youtube_service()
+            
+            if youtube_service and youtube_service.credentials:
+                # Extract user info from credentials
+                user_info = {
+                    'email': 'authenticated@google.com',  # Would need Google+ API for real email
+                    'uid': 'google_oauth_user',
+                    'role': 'normal'
+                }
+                
+                # Assign normal role to Google OAuth users
+                role = RoleManager.create_role(RoleType.NORMAL)
                 
                 # Call login completion callback
                 if self.on_login_complete:
                     self.on_login_complete(user_info, role)
             else:
-                self._show_error("Login failed. Please check your credentials.")
+                self._show_error("Google authentication failed or was cancelled.")
                 
+        except ImportError:
+            self._show_error("YouTube uploader module not available.")
+        except FileNotFoundError:
+            self._show_error("client_secret.json not found. Please add your OAuth credentials.")
         except Exception as ex:
-            self._show_error(f"Login error: {str(ex)}")
+            self._show_error(f"OAuth error: {str(ex)}")
         
         finally:
             self._set_loading(False)
     
-    def _handle_register(self, e):
-        """Handle account registration"""
-        email = self.email_field.value.strip()
-        password = self.password_field.value.strip()
-        
-        if not email or not password:
-            self._show_error("Please enter email and password")
-            return
-        
-        if len(password) < 6:
-            self._show_error("Password must be at least 6 characters")
-            return
-        
-        # Initialize Firebase if needed
-        if not self.firebase_auth:
-            if not self._initialize_firebase():
-                self._show_error("Firebase not configured. Please set up firebase_config.json")
-                return
-        
-        self._set_loading(True)
-        
-        try:
-            # Create account with Firebase
-            user_info = self.firebase_auth.create_account(email, password)
-            
-            if user_info:
-                # Assign normal role to new users
-                role = RoleManager.create_role(RoleType.NORMAL)
-                
-                # Set role in Firebase custom claims
-                self.firebase_auth.set_custom_claims(user_info['uid'], {'role': 'normal'})
-                
-                # Call login completion callback
-                if self.on_login_complete:
-                    user_info['role'] = 'normal'
-                    self.on_login_complete(user_info, role)
-            else:
-                self._show_error("Account creation failed.")
-                
-        except Exception as ex:
-            self._show_error(f"Registration error: {str(ex)}")
-        
-        finally:
-            self._set_loading(False)
+
     
     def _set_loading(self, loading: bool):
         """Show/hide loading indicator"""
         self.is_logging_in = loading
         self.loading_ring.visible = loading
-        self.login_button.disabled = loading
-        self.register_button.disabled = loading
+        self.google_login_button.disabled = loading
         
         if loading:
-            self.login_button.text = "Logging in..."
+            self.google_login_button.text = "Authenticating..."
             self._hide_error()
         else:
-            self.login_button.text = "Login with Google"
+            self.google_login_button.text = "Login with Google"
         
         self.page.update()
     

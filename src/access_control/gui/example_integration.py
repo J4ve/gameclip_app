@@ -24,7 +24,7 @@ def main(page: ft.Page):
     # Main app content (shown after login)
     main_content = ft.Column([
         ft.Text(f"Welcome, {user_session.email}", size=20),
-        ft.Text(f"Role: {user_session.role}", size=14, color=ft.colors.CYAN),
+        ft.Text(f"Role: {user_session.role}", size=14, color=ft.Colors.CYAN),
         
         # Ad banner (hidden for premium users)
         AdBanner(),
@@ -33,7 +33,7 @@ def main(page: ft.Page):
         RoleBasedContainer(
             content=ft.Container(
                 content=ft.Text("Premium Feature: No Ads!", size=16),
-                bgcolor=ft.colors.AMBER,
+                bgcolor=ft.Colors.AMBER,
                 padding=10,
                 border_radius=5
             ),

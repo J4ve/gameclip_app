@@ -41,10 +41,10 @@ class AdBanner(ft.Container):
     def __init__(self, **kwargs):
         content = ft.Container(
             content=ft.Row([
-                ft.Icon(ft.icons.ADS_CLICK, color=ft.colors.YELLOW),
+                ft.Icon(ft.Icons.ADS_CLICK, color=ft.Colors.YELLOW),
                 ft.Text("Advertisement - Upgrade to Premium to remove ads", size=12),
             ]),
-            bgcolor=ft.colors.BLACK26,
+            bgcolor=ft.Colors.BLACK26,
             padding=10,
             border_radius=5
         )
@@ -80,7 +80,7 @@ class AdminPanel(ft.Container):
                 self.users_list
             ]),
             padding=20,
-            bgcolor=ft.colors.SURFACE_VARIANT,
+            bgcolor=ft.Colors.SURFACE_VARIANT,
             border_radius=10
         )
         
@@ -100,7 +100,7 @@ class AdminPanel(ft.Container):
         for user in users:
             self.users_list.controls.append(
                 ft.ListTile(
-                    leading=ft.Icon(ft.icons.PERSON),
+                    leading=ft.Icon(ft.Icons.PERSON),
                     title=ft.Text(user['email'] or user['uid']),
                     subtitle=ft.Text(f"Role: {user['role']}"),
                     trailing=ft.Dropdown(
@@ -143,7 +143,7 @@ class DevLogsPanel(ft.Container):
                 self.logs
             ]),
             padding=15,
-            bgcolor=ft.colors.BLACK,
+            bgcolor=ft.Colors.BLACK,
             border_radius=8
         )
         
@@ -157,11 +157,11 @@ class DevLogsPanel(ft.Container):
     def add_log(self, message: str, level: str = "INFO"):
         """Add a log message."""
         color = {
-            "INFO": ft.colors.WHITE,
-            "WARN": ft.colors.YELLOW,
-            "ERROR": ft.colors.RED,
-            "DEBUG": ft.colors.CYAN
-        }.get(level, ft.colors.WHITE)
+            "INFO": ft.Colors.WHITE,
+            "WARN": ft.Colors.YELLOW,
+            "ERROR": ft.Colors.RED,
+            "DEBUG": ft.Colors.CYAN
+        }.get(level, ft.Colors.WHITE)
         
         self.logs.controls.append(
             ft.Text(f"[{level}] {message}", color=color, size=12)

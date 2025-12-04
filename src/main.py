@@ -16,22 +16,41 @@ def main(page: ft.Page):
     # Handle login completion and show main app
     def handle_login_complete(user_info, role):
         """Called after successful login - show main app"""
+        print(f"Login complete: {user_info}, Role: {role.name}")
+        
         # Set global session
         session_manager.login(user_info, role)
+        print(f"Session set: {session_manager.is_logged_in}")
         
         # Clear page and show main window
         page.clean()
-        window = MainWindow(page)
-        page.add(window.build())
-        page.update()
+        print("Page cleaned")
         
-        # Show welcome message
-        page.show_snack_bar(
-            ft.SnackBar(
-                content=ft.Text(f"Welcome, {user_info.get('email', 'Guest')}! Role: {role.name.title()}"),
-                action="OK"
+        try:
+            window = MainWindow(page)
+            print("MainWindow created")
+            
+            main_layout = window.build()
+            print("MainWindow layout built")
+            
+            page.add(main_layout)
+            print("Layout added to page")
+            
+            page.update()
+            print("Page updated")
+            
+            # Show welcome message
+            page.show_snack_bar(
+                ft.SnackBar(
+                    content=ft.Text(f"Welcome, {user_info.get('email', 'Guest')}! Role: {role.name.title()}"),
+                    action="OK"
+                )
             )
-        )
+        except Exception as e:
+            print(f"Error creating main window: {e}")
+            # Show error message
+            page.add(ft.Text(f"Error: {str(e)}", color=ft.Colors.RED))
+            page.update()
     
     # Show login screen first
     login_screen = LoginScreen(page, on_login_complete=handle_login_complete)

@@ -194,12 +194,12 @@ class MainWindow:
         self.user_info_text = ft.Text(
             f"{user_info['email']} ({user_info['role']})",
             size=12,
-            color=ft.colors.CYAN_400
+            color=ft.Colors.CYAN_400
         )
         
         self.logout_button = ft.IconButton(
-            icon=ft.icons.LOGOUT,
-            icon_color=ft.colors.RED_400,
+            icon=ft.Icons.LOGOUT,
+            icon_color=ft.Colors.RED_400,
             tooltip="Logout",
             on_click=self._handle_logout,
             width=30,

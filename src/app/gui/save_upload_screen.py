@@ -366,8 +366,8 @@ class SaveUploadScreen:
         
         # Role info section
         role_info = ft.Column([
-            ft.Text(f"Role: {session_manager.role_name.title()}", size=12, color=ft.colors.CYAN_400),
-            ft.Text(watermark_warning, size=10, color=ft.colors.ORANGE_400, visible=bool(watermark_warning)),
+            ft.Text(f"Role: {session_manager.role_name.title()}", size=12, color=ft.Colors.CYAN_400),
+            ft.Text(watermark_warning, size=10, color=ft.Colors.ORANGE_400, visible=bool(watermark_warning)),
         ], spacing=2)
         
         buttons_section = ft.Column([
@@ -418,11 +418,11 @@ class SaveUploadScreen:
         if session_manager.has_ads():
             ad_banner = ft.Container(
                 content=ft.Row([
-                    ft.Icon(ft.icons.AD_UNITS, color=ft.colors.ORANGE_400),
+                    ft.Icon(ft.Icons.AD_UNITS, color=ft.Colors.ORANGE_400),
                     ft.Text(
                         "Upgrade to Premium to remove ads and unlock unlimited features!",
                         size=12,
-                        color=ft.colors.ORANGE_400
+                        color=ft.Colors.ORANGE_400
                     ),
                     ft.TextButton(
                         "Upgrade",
@@ -431,8 +431,8 @@ class SaveUploadScreen:
                         )
                     )
                 ], alignment=ft.MainAxisAlignment.CENTER),
-                bgcolor=ft.colors.with_opacity(0.2, ft.colors.ORANGE_700),
-                border=ft.border.all(1, ft.colors.ORANGE_400),
+                bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.ORANGE_700),
+                border=ft.border.all(1, ft.Colors.ORANGE_400),
                 border_radius=5,
                 padding=10,
                 margin=ft.margin.only(bottom=10)
