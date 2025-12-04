@@ -166,9 +166,10 @@ For more details, see `src/access_control/README.md` and subdirectory documentat
 
 ## 📦 Installation & Setup
 
-### API Credentials (YouTube)
 
-You must provide your own YouTube API OAuth credentials for uploads. The file `src/uploader/client_secret.json` **should NOT be committed to Git or shared publicly.**
+### API Credentials (YouTube & Firebase)
+
+You must provide your own Google API OAuth credentials and Firebase Admin SDK key for uploads and user management. **Both files must be placed in the `configs/` folder and should NOT be committed to Git or shared publicly.**
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project (or select your existing one)
@@ -176,9 +177,12 @@ You must provide your own YouTube API OAuth credentials for uploads. The file `s
 4. Go to "APIs & Services" → "Credentials"
 5. Create OAuth 2.0 Client ID (Desktop app)
 6. Download the `client_secret.json` file
-7. Place it in `src/uploader/client_secret.json`
-8. **Do not commit this file to Git!**
-9. If you ever accidentally commit it, delete it from Git history and regenerate credentials in Google Cloud Console.
+7. Place it in `configs/client_secret.json`
+8. In [Firebase Console](https://console.firebase.google.com/), go to Project Settings → Service Accounts → Generate new private key
+9. Download the `firebase-admin-key.json` file
+10. Place it in `configs/firebase-admin-key.json`
+11. **Do not commit these files to Git!**
+12. If you ever accidentally commit them, delete them from Git history and regenerate credentials in Google Cloud Console and Firebase Console.
 
 ### Clone the repository
 ```bash
