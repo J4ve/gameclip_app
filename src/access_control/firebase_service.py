@@ -7,7 +7,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore, auth
 import os
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 class FirebaseService:
     """Firebase Admin SDK service for user and role management"""
@@ -87,11 +87,11 @@ class FirebaseService:
                 'name': user_data.get('name'),
                 'role': user_data.get('role', 'normal'),
                 'provider': user_data.get('provider', 'google'),
-                'created_at': datetime.now(datetime.UTC),
-                'last_login': datetime.now(datetime.UTC),
+                'created_at': datetime.now(timezone.utc),
+                'last_login': datetime.now(timezone.utc),
                 'usage_count': 0,
                 'daily_usage': 0,
-                'daily_reset_date': datetime.now(datetime.UTC).date().isoformat(),
+                'daily_reset_date': datetime.now(timezone.utc).date().isoformat(),
                 'premium_until': user_data.get('premium_until'),
                 'google_id': user_data.get('google_id'),
                 'uid': user_data.get('uid'),
@@ -166,7 +166,7 @@ class FirebaseService:
             doc_ref = self.db.collection('users').document(email)
             doc_ref.update({
                 'role': new_role,
-                'updated_at': datetime.now(datetime.UTC)
+                'updated_at': datetime.now(timezone.utc)
             })
             
             print(f"Updated role for {email} to {new_role}")
@@ -188,7 +188,7 @@ class FirebaseService:
             
             if doc.exists:
                 doc_ref.update({
-                    'last_login': datetime.now(datetime.UTC)
+                    'last_login': datetime.now(timezone.utc)
                 })
                 print(f"Updated last login for {uid_or_email}")
                 return True
@@ -200,7 +200,7 @@ class FirebaseService:
                 
                 if docs:
                     docs[0].reference.update({
-                        'last_login': datetime.now(datetime.UTC)
+                        'last_login': datetime.now(datetime.utc)
                     })
                     print(f"Updated last login for UID {uid_or_email}")
                     return True
@@ -220,8 +220,8 @@ class FirebaseService:
         try:
             doc_ref = self.db.collection('users').document(email)
             doc_ref.update({
-                'usage_count': firestore.Increment(1),
-                'updated_at': datetime.now(datetime.UTC)
+                    'usage_count': firestore.Increment(1),
+                    'updated_at': datetime.now(timezone.utc)
             })
             
             print(f"Incremented usage count for {email}")
@@ -242,20 +242,20 @@ class FirebaseService:
             
             if doc.exists:
                 user_data = doc.to_dict()
-                today = datetime.now(datetime.UTC).date().isoformat()
+                today = datetime.now(datetime.utc).date().isoformat()
                 
                 # Reset daily count if new day
                 if user_data.get('daily_reset_date') != today:
                     doc_ref.update({
                         'daily_usage': 1,
                         'daily_reset_date': today,
-                        'updated_at': datetime.now(datetime.UTC)
+                        'updated_at': datetime.now(timezone.utc)
                     })
                     print(f"Reset daily usage for {email} (new day)")
                 else:
                     doc_ref.update({
                         'daily_usage': firestore.Increment(1),
-                        'updated_at': datetime.now(datetime.UTC)
+                        'updated_at': datetime.now(timezone.utc)
                     })
                     print(f"Incremented daily usage for {email}")
                 
@@ -274,8 +274,8 @@ class FirebaseService:
             doc_ref = self.db.collection('users').document(email)
             doc_ref.update({
                 'premium_until': premium_until,
-                'role': 'premium' if premium_until > datetime.now(datetime.UTC) else 'normal',
-                'updated_at': datetime.now(datetime.UTC)
+                'role': 'premium' if premium_until > datetime.now(timezone.utc) else 'normal',
+                'updated_at': datetime.now(timezone.utc)
             })
             
             print(f"Set premium until {premium_until} for {email}")
@@ -300,7 +300,7 @@ class FirebaseService:
                     from datetime import datetime as dt
                     premium_until = dt.fromisoformat(premium_until.replace('Z', '+00:00'))
                 
-                is_premium = premium_until > datetime.now(datetime.UTC)
+                is_premium = premium_until > datetime.now(timezone.utc)
                 
                 # Update role if premium expired
                 if not is_premium and user_data.get('role') == 'premium':
