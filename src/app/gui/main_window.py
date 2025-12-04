@@ -8,6 +8,7 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
+from access_control.session import session_manager
 
 
 class MainWindow:
@@ -22,6 +23,10 @@ class MainWindow:
         print(f"SelectionScreen created: {self.selection_screen}")
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+
+        # User info components
+        self.user_info_text = None
+        self.logout_button = None
 
         # stepper indicator thingies
         # Step 1: Select Videos
@@ -184,6 +189,32 @@ class MainWindow:
             case 2:
                 content = self.save_upload_screen.build()
 
+        # User info section at top right
+        user_info = session_manager.get_user_display_info()
+        self.user_info_text = ft.Text(
+            f"{user_info['email']} ({user_info['role']})",
+            size=12,
+            color=ft.colors.CYAN_400
+        )
+        
+        self.logout_button = ft.IconButton(
+            icon=ft.icons.LOGOUT,
+            icon_color=ft.colors.RED_400,
+            tooltip="Logout",
+            on_click=self._handle_logout,
+            width=30,
+            height=30
+        )
+        
+        user_section = ft.Container(
+            content=ft.Row([
+                self.user_info_text,
+                self.logout_button
+            ], spacing=5, alignment=ft.MainAxisAlignment.END),
+            right=20,
+            top=20
+        )
+
         # TODO: Add settings button to open ConfigTab dialog
 
         # build the stepper indicator
@@ -257,6 +288,7 @@ class MainWindow:
                 expand=True,
             ),
             self.next_button,  # Fixed position overlay
+            user_section,  # User info at top right
         ]
         if self.current_step > 0:
             stack_children.append(self.back_button)  # Show back button only if not at first step
@@ -264,3 +296,53 @@ class MainWindow:
             stack_children,
             expand=True,
         )
+    
+    def _handle_logout(self, e):
+        """Handle logout button click"""
+        # Show confirmation dialog
+        def confirm_logout(e):
+            session_manager.logout()
+            # Restart the app by clearing page and showing login screen again
+            self.page.clean()
+            from access_control.gui.auth_screen import LoginScreen
+            
+            def handle_login_complete(user_info, role):
+                session_manager.login(user_info, role)
+                self.page.clean()
+                new_window = MainWindow(self.page)
+                self.page.add(new_window.build())
+                self.page.update()
+                
+                self.page.show_snack_bar(
+                    ft.SnackBar(
+                        content=ft.Text(f"Welcome back, {user_info.get('email', 'Guest')}!"),
+                        action="OK"
+                    )
+                )
+            
+            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+            self.page.add(login_screen.build())
+            self.page.update()
+            
+            # Close dialog
+            dialog.open = False
+            self.page.update()
+        
+        def cancel_logout(e):
+            dialog.open = False
+            self.page.update()
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Confirm Logout"),
+            content=ft.Text(f"Are you sure you want to logout {session_manager.email}?"),
+            actions=[
+                ft.TextButton("Cancel", on_click=cancel_logout),
+                ft.TextButton("Logout", on_click=confirm_logout),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.dialog = dialog
+        dialog.open = True
+        self.page.update()
