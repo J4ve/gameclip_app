@@ -35,6 +35,27 @@ class ConfigTab:
         # Current template
         self.current_template = None
         self.templates_dropdown = None
+
+        # helper for compatibility with different flet versions
+        def make_option(key, text=None):
+            try:
+                if text is None:
+                    return ft.dropdown.Option(key)
+                return ft.dropdown.Option(key, text)
+            except Exception:
+                try:
+                    if text is None:
+                        return ft.DropdownOption(key)
+                    return ft.DropdownOption(key, text)
+                except Exception:
+                    # Last resort: return a simple object that has 'key' attr
+                    class _Opt:
+                        def __init__(self, k, t=None):
+                            self.key = k
+                            self.text = t or k
+                    return _Opt(key, text)
+
+        self._make_option = make_option
         
     def build(self):
         """Build and return config tab layout"""
@@ -75,8 +96,17 @@ class ConfigTab:
         # Role permissions display
         permissions = []
         if session_manager.current_role:
-            permissions = list(session_manager.current_role.permissions.keys())
-        
+            perms = session_manager.current_role.permissions
+            # permissions may be a dict (older code) or a set/list of Permission enums
+            if isinstance(perms, dict):
+                permissions = list(perms.keys())
+            else:
+                try:
+                    # iterate and get readable names
+                    permissions = [getattr(p, 'value', str(p)) for p in perms]
+                except Exception:
+                    permissions = [str(perms)]
+
         permissions_text = ", ".join(permissions) if permissions else "No permissions"
         
         return ft.Container(
@@ -99,10 +129,13 @@ class ConfigTab:
     def _build_templates_section(self):
         """Build metadata templates section"""
         # Template selector
+        # Dropdown options creation is delegated to _get_template_options which
+        # uses a compatibility helper to construct Option objects for different
+        # flet versions.
         self.templates_dropdown = ft.Dropdown(
             label="Select Template",
             options=self._get_template_options(),
-            on_change=self._on_template_selected,
+            on_change=lambda e: self._on_template_selected(e),
             width=200,
         )
         
@@ -265,69 +298,90 @@ class ConfigTab:
         try:
             for template_file in self.templates_dir.glob("*.json"):
                 template_name = template_file.stem
-                options.append(ft.dropdown.Option(template_name, template_name))
+                opt = self._make_option(template_name, template_name)
+                options.append(opt)
         except:
             pass
         return options
     
     def _on_template_selected(self, e):
         """Handle template selection"""
-        if e.control.value:
-            self._load_template_by_name(e.control.value)
-    
-    def _save_template(self, e):
-        """Save current template"""
-        template_name = self.template_name_field.value.strip()
-        if not template_name:
-            self._show_error("Please enter a template name")
-            return
-        
-        template_data = {
-            "name": template_name,
-            "title": self.default_title_field.value,
-            "description": self.default_description_field.value,
-            "tags": self.default_tags_field.value,
-            "visibility": self.default_visibility_dropdown.value,
-            "made_for_kids": self.default_kids_checkbox.value,
-        }
-        
         try:
-            template_path = self.templates_dir / f"{template_name}.json"
-            with open(template_path, 'w') as f:
-                json.dump(template_data, f, indent=2)
-            
-            # Refresh dropdown
-            self.templates_dropdown.options = self._get_template_options()
-            self.page.update()
-            
-            self._show_success(f"Template '{template_name}' saved successfully")
-            
+            val = None
+            if hasattr(e, 'control') and getattr(e.control, 'value', None) is not None:
+                val = e.control.value
+            elif hasattr(e, 'data'):
+                val = e.data
+            if val:
+                self._load_template_by_name(val)
         except Exception as ex:
-            self._show_error(f"Failed to save template: {str(ex)}")
+            print(f"_on_template_selected error: {ex}")
+            self._show_error(f"Error selecting template: {ex}")
     
-    def _load_template(self, e):
+    def _save_template(self, e=None):
+        """Save current template"""
+        try:
+            template_name = (self.template_name_field.value or "").strip()
+            if not template_name:
+                self._show_error("Please enter a template name")
+                return
+
+            template_data = {
+                "name": template_name,
+                "title": self.default_title_field.value,
+                "description": self.default_description_field.value,
+                "tags": self.default_tags_field.value,
+                "visibility": self.default_visibility_dropdown.value,
+                "made_for_kids": self.default_kids_checkbox.value,
+            }
+
+            try:
+                template_path = self.templates_dir / f"{template_name}.json"
+                with open(template_path, 'w') as f:
+                    json.dump(template_data, f, indent=2)
+
+                # Refresh dropdown
+                self.templates_dropdown.options = self._get_template_options()
+                # try to preserve selection
+                self.templates_dropdown.value = template_name
+                self.page.update()
+
+                self._show_success(f"Template '{template_name}' saved successfully")
+
+            except Exception as ex:
+                self._show_error(f"Failed to save template: {str(ex)}")
+
+        except Exception as ex:
+            print(f"_save_template error: {ex}")
+            self._show_error(f"Error saving template: {ex}")
+    
+    def _load_template(self, e=None):
         """Load template from file picker"""
-        def handle_file_result(e: ft.FilePickerResultEvent):
-            if e.files:
+        try:
+            def handle_file_result(evt):
                 try:
-                    file_path = e.files[0].path
-                    with open(file_path, 'r') as f:
-                        template_data = json.load(f)
-                    
-                    self._populate_template_fields(template_data)
-                    self._show_success("Template loaded successfully")
-                    
+                    files = getattr(evt, 'files', None)
+                    if files:
+                        file_path = files[0].path if getattr(files[0], 'path', None) else files[0]
+                        with open(file_path, 'r') as f:
+                            template_data = json.load(f)
+                        self._populate_template_fields(template_data)
+                        self._show_success("Template loaded successfully")
                 except Exception as ex:
-                    self._show_error(f"Failed to load template: {str(ex)}")
-        
-        file_picker = ft.FilePicker(on_result=handle_file_result)
-        self.page.overlay.append(file_picker)
-        self.page.update()
-        file_picker.pick_files(
-            dialog_title="Load Template",
-            allowed_extensions=["json"],
-            allow_multiple=False
-        )
+                    print(f"handle_file_result error: {ex}")
+                    self._show_error(f"Failed to load template: {ex}")
+
+            file_picker = ft.FilePicker(on_result=handle_file_result)
+            self.page.overlay.append(file_picker)
+            self.page.update()
+            file_picker.pick_files(
+                dialog_title="Load Template",
+                allowed_extensions=["json"],
+                allow_multiple=False
+            )
+        except Exception as ex:
+            print(f"_load_template error: {ex}")
+            self._show_error(f"Error opening file picker: {ex}")
     
     def _load_template_by_name(self, template_name):
         """Load template by name from templates directory"""
@@ -335,29 +389,41 @@ class ConfigTab:
             template_path = self.templates_dir / f"{template_name}.json"
             with open(template_path, 'r') as f:
                 template_data = json.load(f)
-            
+
             self._populate_template_fields(template_data)
-            
+
         except Exception as ex:
+            print(f"_load_template_by_name error: {ex}")
             self._show_error(f"Failed to load template: {str(ex)}")
     
     def _populate_template_fields(self, template_data):
         """Populate template fields with data"""
-        self.template_name_field.value = template_data.get('name', '')
-        self.default_title_field.value = template_data.get('title', '')
-        self.default_description_field.value = template_data.get('description', '')
-        self.default_tags_field.value = template_data.get('tags', '')
-        self.default_visibility_dropdown.value = template_data.get('visibility', 'unlisted')
-        self.default_kids_checkbox.value = template_data.get('made_for_kids', False)
-        self.page.update()
+        try:
+            self.template_name_field.value = template_data.get('name', '')
+            self.default_title_field.value = template_data.get('title', '')
+            self.default_description_field.value = template_data.get('description', '')
+            self.default_tags_field.value = template_data.get('tags', '')
+            # Some Dropdown option implementations use .value, others expect matching option objects
+            try:
+                self.default_visibility_dropdown.value = template_data.get('visibility', 'unlisted')
+            except Exception:
+                pass
+            try:
+                self.default_kids_checkbox.value = template_data.get('made_for_kids', False)
+            except Exception:
+                pass
+            self.page.update()
+        except Exception as ex:
+            print(f"_populate_template_fields error: {ex}")
+            self._show_error(f"Failed to populate template fields: {ex}")
     
-    def _delete_template(self, e):
+    def _delete_template(self, e=None):
         """Delete selected template"""
-        if not self.templates_dropdown.value:
+        if not getattr(self.templates_dropdown, 'value', None):
             self._show_error("Please select a template to delete")
             return
         
-        def confirm_delete(e):
+        def confirm_delete(evt=None):
             dialog.open = False
             self.page.update()
             
@@ -376,7 +442,7 @@ class ConfigTab:
             except Exception as ex:
                 self._show_error(f"Failed to delete template: {str(ex)}")
         
-        def cancel_delete(e):
+        def cancel_delete(evt=None):
             dialog.open = False
             self.page.update()
         
@@ -390,9 +456,13 @@ class ConfigTab:
             ],
         )
         
-        self.page.overlay.append(dialog)
-        dialog.open = True
-        self.page.update()
+        try:
+            self.page.overlay.append(dialog)
+            dialog.open = True
+            self.page.update()
+        except Exception as ex:
+            print(f"_delete_template dialog error: {ex}")
+            self._show_error(f"Failed to show delete dialog: {ex}")
     
     def _clear_template_fields(self):
         """Clear all template fields"""
@@ -402,6 +472,11 @@ class ConfigTab:
         self.default_tags_field.value = "videomerger, merged, video"
         self.default_visibility_dropdown.value = "unlisted"
         self.default_kids_checkbox.value = False
+
+        try:
+            self.page.update()
+        except Exception:
+            pass
     
     def _browse_output_directory(self, e):
         """Browse for output directory"""
