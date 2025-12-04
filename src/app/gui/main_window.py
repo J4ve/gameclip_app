@@ -313,12 +313,12 @@ class MainWindow:
                 self.page.add(new_window.build())
                 self.page.update()
                 
-                self.page.show_snack_bar(
-                    ft.SnackBar(
-                        content=ft.Text(f"Welcome back, {user_info.get('email', 'Guest')}!"),
-                        action="OK"
-                    )
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Welcome back, {user_info.get('email', 'Guest')}!"),
+                    action="OK"
                 )
+                self.page.snack_bar.open = True
+                self.page.update()
             
             login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
             self.page.add(login_screen.build())

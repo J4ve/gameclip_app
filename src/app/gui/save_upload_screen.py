@@ -426,9 +426,7 @@ class SaveUploadScreen:
                     ),
                     ft.TextButton(
                         "Upgrade",
-                        on_click=lambda _: self.page.show_snack_bar(
-                            ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
-                        )
+                        on_click=lambda _: self._show_upgrade_message()
                     )
                 ], alignment=ft.MainAxisAlignment.CENTER),
                 bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.ORANGE_700),
@@ -999,3 +997,10 @@ class SaveUploadScreen:
         self._close_dialog(dialog)
         self.is_uploading = True
         self._upload_to_youtube()
+
+    def _show_upgrade_message(self):
+        """Show upgrade message using snack bar"""
+        if self.page:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
+            self.page.snack_bar.open = True
+            self.page.update()
