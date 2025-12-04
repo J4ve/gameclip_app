@@ -11,7 +11,7 @@ import os
 
 
 TOKEN_PATH = "token.pickle"
-CLIENT_SECRET = os.path.join(os.path.dirname(__file__), "client_secret.json")
+CLIENT_SECRET = os.path.join(os.path.dirname(__file__), "..", "..", "configs", "client_secret.json")
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/userinfo.profile", 

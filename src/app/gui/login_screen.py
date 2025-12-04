@@ -1,6 +1,6 @@
 """
-Login Screen - Initial authentication screen before main app
-Allows users to login as guest or with Google authentication
+Login Screen with Firebase Integration
+Allows users to login as guest or with Google authentication using Firebase
 """
 
 import flet as ft
@@ -10,14 +10,11 @@ import os
 
 
 class LoginScreen:
-    """Login screen with guest and Google login options"""
+    """Login screen with guest and Google login options and Firebase integration"""
     
     def __init__(self, page: ft.Page, on_login_complete: Optional[Callable] = None):
         self.page = page
         self.on_login_complete = on_login_complete
-        
-        # Initialize Firebase auth (will be loaded when needed)
-        self.firebase_auth = None
         
         # UI components
         self.google_login_button = None
@@ -27,15 +24,6 @@ class LoginScreen:
         
         # Login state
         self.is_logging_in = False
-    
-    def _initialize_firebase(self) -> bool:
-        """Initialize Firebase auth if config exists"""
-        try:
-            self.firebase_auth = get_firebase_auth()
-            return True
-        except Exception as e:
-            print(f"Failed to initialize Firebase: {e}")
-            return False
     
     def build(self) -> ft.Container:
         """Build and return the login screen UI"""
@@ -166,7 +154,7 @@ class LoginScreen:
         )
     
     def _handle_guest_login(self, e):
-        """Handle guest login - assign guest role and continue"""
+        """Handle guest login with Firebase tracking"""
         try:
             print("Guest login started")
             
@@ -177,10 +165,30 @@ class LoginScreen:
             # Set session info (mock user session for guest)
             user_info = {
                 'email': 'guest@local',
-                'uid': 'guest',
-                'role': 'guest'
+                'uid': f'guest_{int(__import__("time").time())}',  # Unique guest ID
+                'name': 'Guest User',
+                'role': 'guest',
+                'provider': 'guest',
+                'authenticated': False
             }
             print(f"User info prepared: {user_info}")
+            
+            # Optional: Track guest usage in Firebase (if available)
+            try:
+                from access_control.firebase_service import FirebaseService
+                firebase_service = FirebaseService()
+                
+                # Create a guest session record (optional)
+                guest_data = {
+                    **user_info,
+                    'session_started': __import__("datetime").datetime.utcnow().isoformat(),
+                    'guest_session': True
+                }
+                firebase_service.create_user(guest_data)
+                print("Guest session tracked in Firebase")
+                
+            except Exception as firebase_ex:
+                print(f"Firebase guest tracking failed (continuing): {firebase_ex}")
             
             # Call login completion callback
             if self.on_login_complete:
@@ -194,7 +202,7 @@ class LoginScreen:
             self._show_error(f"Guest login failed: {str(ex)}")
     
     def _handle_google_login(self, e):
-        """Handle Google OAuth login - clears tokens first for fresh authentication"""
+        """Handle Google OAuth login with Firebase integration"""
         if self.is_logging_in:
             return
         
@@ -237,7 +245,8 @@ class LoginScreen:
                     "role": "normal",  # Default role for OAuth users
                     "provider": "google",
                     "authenticated": True,
-                    "google_id": user_info_response.get('id', '')
+                    "google_id": user_info_response.get('id', ''),
+                    "uid": user_info_response.get('id', '')  # Use Google ID as UID
                 }
                 
             except Exception as userinfo_ex:
@@ -248,10 +257,45 @@ class LoginScreen:
                     "name": "Google User",
                     "role": "normal",
                     "provider": "google", 
-                    "authenticated": True
+                    "authenticated": True,
+                    "uid": "unknown"
                 }
             
-            # Create role object
+            # Try to sync with Firebase if available
+            self._show_status("Syncing user data...")
+            firebase_user_data = None
+            
+            try:
+                from access_control.firebase_service import FirebaseService
+                firebase_service = FirebaseService()
+                
+                # Check if user exists in Firebase, create if not
+                firebase_user_data = firebase_service.get_user_by_email(user_data["email"])
+                
+                if firebase_user_data:
+                    # Update user with Firebase data (may have upgraded role, etc.)
+                    user_data.update({
+                        "role": firebase_user_data.get("role", "normal"),
+                        "usage_count": firebase_user_data.get("usage_count", 0),
+                        "daily_usage": firebase_user_data.get("daily_usage", 0),
+                        "premium_until": firebase_user_data.get("premium_until"),
+                        "created_at": firebase_user_data.get("created_at"),
+                        "last_login": firebase_user_data.get("last_login")
+                    })
+                    print(f"Loaded existing Firebase user with role: {user_data['role']}")
+                else:
+                    # Create new user in Firebase
+                    firebase_user_data = firebase_service.create_user(user_data)
+                    print(f"Created new Firebase user with role: {user_data['role']}")
+                    
+                # Update last login using email (document ID)
+                firebase_service.update_user_last_login(user_data["email"])
+                
+            except Exception as firebase_ex:
+                print(f"Firebase sync failed (continuing without): {firebase_ex}")
+                # Continue without Firebase if it's not available
+            
+            # Create role object based on final role (may have been updated from Firebase)
             role = RoleManager.create_role_by_name(user_data["role"])
             
             # Authenticate with session manager - this saves the session
