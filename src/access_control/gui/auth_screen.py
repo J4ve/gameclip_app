@@ -21,10 +21,7 @@ class LoginScreen:
         self.firebase_auth = None
         
         # UI components
-        self.email_field = None
-        self.password_field = None
-        self.login_button = None
-        self.register_button = None
+        self.google_login_button = None
         self.guest_button = None
         self.loading_ring = None
         self.status_text = None
@@ -88,42 +85,18 @@ class LoginScreen:
             bgcolor=ft.Colors.GREY_900
         )
         
-        # Google login section
-        self.email_field = ft.TextField(
-            label="Email",
-            prefix_icon=ft.Icons.EMAIL,
-            width=300,
-            bgcolor=ft.Colors.GREY_800,
-            border_color=ft.Colors.GREY_600
-        )
-        
-        self.password_field = ft.TextField(
-            label="Password",
-            prefix_icon=ft.Icons.LOCK,
-            password=True,
-            can_reveal_password=True,
-            width=300,
-            bgcolor=ft.Colors.GREY_800,
-            border_color=ft.Colors.GREY_600,
-            on_submit=self._handle_google_login
-        )
-        
-        self.login_button = ft.ElevatedButton(
-            "Login with Google",
+        # Google login section - OAuth button only
+        self.google_login_button = ft.ElevatedButton(
+            "Sign in with Google",
             icon=ft.Icons.LOGIN,
             on_click=self._handle_google_login,
             style=ft.ButtonStyle(
                 bgcolor=ft.Colors.BLUE_600,
                 color=ft.Colors.WHITE,
-                padding=ft.padding.symmetric(horizontal=20, vertical=10)
+                padding=ft.padding.symmetric(horizontal=30, vertical=15)
             ),
-            width=200
-        )
-        
-        self.register_button = ft.TextButton(
-            "Create Account",
-            on_click=self._handle_register,
-            style=ft.ButtonStyle(color=ft.Colors.BLUE_400)
+            width=250,
+            height=50
         )
         
         # Loading indicator
@@ -149,20 +122,17 @@ class LoginScreen:
                     text_align=ft.TextAlign.CENTER
                 ),
                 ft.Text(
-                    "Test Accounts:\n• admin@test.com / admin123\n• user@test.com / user123\n• premium@test.com / premium123",
+                    "Click below to authenticate with your Google account\nin your default browser (same as YouTube upload)",
                     size=10,
                     color=ft.Colors.CYAN_400,
                     text_align=ft.TextAlign.CENTER
                 ),
-                self.email_field,
-                self.password_field,
                 ft.Row([
                     self.loading_ring,
-                    self.login_button
+                    self.google_login_button
                 ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-                self.register_button,
                 self.status_text
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15),
             padding=20,
             border=ft.border.all(1, ft.Colors.GREY_600),
             border_radius=10,
@@ -181,7 +151,7 @@ class LoginScreen:
             ], alignment=ft.MainAxisAlignment.CENTER, spacing=30),
             ft.Container(height=20),  # Spacer
             ft.Text(
-                "Note: Using mock authentication for development",
+                "Note: Google login uses YouTube OAuth (same as upload authentication)",
                 size=10,
                 color=ft.Colors.GREY_600,
                 text_align=ft.TextAlign.CENTER
@@ -224,88 +194,84 @@ class LoginScreen:
             self._show_error(f"Guest login failed: {str(ex)}")
     
     def _handle_google_login(self, e):
-        """Handle Google/Firebase login"""
+        """Handle Google OAuth login using real OAuth flow"""
+        import subprocess
+        import sys
+        import json
+        import os
+        
         if self.is_logging_in:
             return
         
-        email = self.email_field.value.strip()
-        password = self.password_field.value.strip()
-        
-        if not email or not password:
-            self._show_error("Please enter email and password")
-            return
-        
-        # Initialize Firebase if needed
-        if not self.firebase_auth:
-            if not self._initialize_firebase():
-                self._show_error("Firebase not configured. Please set up firebase_config.json")
-                return
-        
         self._set_loading(True)
+        self._show_status("Starting Google authentication...")
         
         try:
-            # Attempt login with Firebase
-            user_info = self.firebase_auth.sign_in(email, password)
+            # Use the actual YouTube uploader authentication
+            from uploader.auth import get_youtube_service
             
-            if user_info:
-                # Get user role from Firebase custom claims or Firestore
-                role_name = user_info.get('role', 'normal')  # Default to normal
-                role = RoleManager.create_role_by_name(role_name)
-                
-                # Call login completion callback
-                if self.on_login_complete:
-                    self.on_login_complete(user_info, role)
-            else:
-                self._show_error("Login failed. Please check your credentials.")
-                
-        except Exception as ex:
-            self._show_error(f"Login error: {str(ex)}")
-        
-        finally:
-            self._set_loading(False)
-    
-    def _handle_register(self, e):
-        """Handle account registration"""
-        email = self.email_field.value.strip()
-        password = self.password_field.value.strip()
-        
-        if not email or not password:
-            self._show_error("Please enter email and password")
-            return
-        
-        if len(password) < 6:
-            self._show_error("Password must be at least 6 characters")
-            return
-        
-        # Initialize Firebase if needed
-        if not self.firebase_auth:
-            if not self._initialize_firebase():
-                self._show_error("Firebase not configured. Please set up firebase_config.json")
+            self._show_status("Opening browser for Google authentication...")
+            
+            # Get YouTube service - this will handle the real OAuth flow
+            youtube_service = get_youtube_service()
+            
+            if not youtube_service or not youtube_service.credentials:
+                self._show_error("Google authentication failed")
                 return
-        
-        self._set_loading(True)
-        
-        try:
-            # Create account with Firebase
-            user_info = self.firebase_auth.create_account(email, password)
             
-            if user_info:
-                # Assign normal role to new users
-                role = RoleManager.create_role(RoleType.NORMAL)
+            # Get user info from Google's UserInfo API
+            self._show_status("Getting user information...")
+            
+            try:
+                # Build userinfo service to get user details
+                from googleapiclient.discovery import build
+                userinfo_service = build('oauth2', 'v2', credentials=youtube_service.credentials)
+                user_info_response = userinfo_service.userinfo().get().execute()
                 
-                # Set role in Firebase custom claims
-                self.firebase_auth.set_custom_claims(user_info['uid'], {'role': 'normal'})
+                # Extract user data from Google's response
+                user_data = {
+                    "email": user_info_response.get('email', 'unknown@gmail.com'),
+                    "name": user_info_response.get('name', 'Google User'),
+                    "given_name": user_info_response.get('given_name', ''),
+                    "family_name": user_info_response.get('family_name', ''),
+                    "picture": user_info_response.get('picture', ''),
+                    "role": "normal",  # Default role for OAuth users
+                    "provider": "google",
+                    "authenticated": True,
+                    "google_id": user_info_response.get('id', '')
+                }
                 
-                # Call login completion callback
-                if self.on_login_complete:
-                    user_info['role'] = 'normal'
-                    self.on_login_complete(user_info, role)
+            except Exception as userinfo_ex:
+                print(f"Could not get user info: {userinfo_ex}")
+                # Fallback if userinfo API fails
+                user_data = {
+                    "email": "authenticated@gmail.com",
+                    "name": "Google User",
+                    "role": "normal",
+                    "provider": "google", 
+                    "authenticated": True
+                }
+            
+            # Create role object
+            from ..roles import RoleManager
+            role = RoleManager.create_role_by_name(user_data["role"])
+            
+            # Authenticate with session manager - this saves the session
+            from ..session import session_manager
+            session_manager.login(user_data, role)
+            
+            self._show_status("Authentication successful!")
+            
+            # Call login completion callback
+            if self.on_login_complete:
+                self.on_login_complete(user_data, role)
             else:
-                self._show_error("Account creation failed.")
+                self._show_error("No login completion callback set!")
                 
         except Exception as ex:
-            self._show_error(f"Registration error: {str(ex)}")
-        
+            print(f"OAuth error: {ex}")
+            self._show_error(f"Authentication failed: {str(ex)}")
+            
         finally:
             self._set_loading(False)
     
@@ -313,14 +279,13 @@ class LoginScreen:
         """Show/hide loading indicator"""
         self.is_logging_in = loading
         self.loading_ring.visible = loading
-        self.login_button.disabled = loading
-        self.register_button.disabled = loading
+        self.google_login_button.disabled = loading
         
         if loading:
-            self.login_button.text = "Logging in..."
+            self.google_login_button.text = "Authenticating..."
             self._hide_error()
         else:
-            self.login_button.text = "Login with Google"
+            self.google_login_button.text = "Sign in with Google"
         
         self.page.update()
     
@@ -335,6 +300,13 @@ class LoginScreen:
         """Show success message"""
         self.status_text.value = message
         self.status_text.color = ft.Colors.GREEN_400
+        self.status_text.visible = True
+        self.page.update()
+    
+    def _show_status(self, message: str):
+        """Show status message"""
+        self.status_text.value = message
+        self.status_text.color = ft.Colors.BLUE_400
         self.status_text.visible = True
         self.page.update()
     

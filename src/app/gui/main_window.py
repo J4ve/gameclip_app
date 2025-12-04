@@ -191,8 +191,10 @@ class MainWindow:
 
         # User info section at top right
         user_info = session_manager.get_user_display_info()
+        # Show user's name if available, otherwise fall back to email
+        display_name = user_info.get('name') or user_info.get('email', 'User')
         self.user_info_text = ft.Text(
-            f"{user_info['email']} ({user_info['role']})",
+            f"{display_name} ({user_info['role']})",
             size=12,
             color=ft.Colors.CYAN_400
         )
@@ -206,16 +208,26 @@ class MainWindow:
             height=30
         )
         
+        self.settings_button = ft.IconButton(
+            icon=ft.Icons.SETTINGS,
+            icon_color=ft.Colors.GREY_400,
+            tooltip="Settings & Templates",
+            on_click=self._open_settings,
+            width=30,
+            height=30
+        )
+        
         user_section = ft.Container(
             content=ft.Row([
                 self.user_info_text,
+                self.settings_button,
                 self.logout_button
             ], spacing=5, alignment=ft.MainAxisAlignment.END),
             right=20,
             top=20
         )
 
-        # TODO: Add settings button to open ConfigTab dialog
+        # Settings dialog will be shown when settings button is clicked
 
         # build the stepper indicator
         stepper = ft.Container(
@@ -301,7 +313,11 @@ class MainWindow:
         """Handle logout button click"""
         # Show confirmation dialog
         def confirm_logout(e):
+            dialog.open = False
+            self.page.update()
+            
             session_manager.logout()
+            
             # Restart the app by clearing page and showing login screen again
             self.page.clean()
             from access_control.gui.auth_screen import LoginScreen
@@ -314,7 +330,7 @@ class MainWindow:
                 self.page.update()
                 
                 self.page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('email', 'Guest')}!"),
+                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
                     action="OK"
                 )
                 self.page.snack_bar.open = True
@@ -323,19 +339,21 @@ class MainWindow:
             login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
             self.page.add(login_screen.build())
             self.page.update()
-            
-            # Close dialog
-            dialog.open = False
-            self.page.update()
         
         def cancel_logout(e):
             dialog.open = False
             self.page.update()
         
+        # Get user display name safely
+        user_name = None
+        if session_manager.current_user:
+            user_name = session_manager.current_user.get('name')
+        user_display = user_name or session_manager.email or 'User'
+        
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Confirm Logout"),
-            content=ft.Text(f"Are you sure you want to logout {session_manager.email}?"),
+            content=ft.Text(f"Are you sure you want to logout {user_display}?"),
             actions=[
                 ft.TextButton("Cancel", on_click=cancel_logout),
                 ft.TextButton("Logout", on_click=confirm_logout),
@@ -343,6 +361,37 @@ class MainWindow:
             actions_alignment=ft.MainAxisAlignment.END,
         )
         
-        self.page.dialog = dialog
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _open_settings(self, e):
+        """Open settings dialog"""
+        def close_settings(e):
+            dialog.open = False
+            self.page.update()
+        
+        # Create config tab instance
+        config_tab = ConfigTab(self.page)
+        config_content = config_tab.build()
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.SETTINGS, color=ft.Colors.BLUE_400),
+                ft.Text("Settings & Configuration", size=18)
+            ], spacing=10),
+            content=ft.Container(
+                content=config_content,
+                width=800,
+                height=600,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=close_settings),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        
+        self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()

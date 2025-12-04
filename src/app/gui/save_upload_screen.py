@@ -836,13 +836,9 @@ class SaveUploadScreen:
                 ft.Text(
                     "This will first merge your videos, then upload to YouTube.",
                     size=12,
-                    color=ft.Colors.GREY_400
-                ),
-                ft.Text(
-                    "You'll be asked to sign in to your YouTube account.",
-                    size=12,
                     color=ft.Colors.YELLOW
                 ),
+
             ], spacing=8, tight=True),
             actions=[
                 ft.TextButton(
@@ -894,9 +890,18 @@ class SaveUploadScreen:
             # Create uploader instance
             uploader = YouTubeUploader()
             
-            # Authenticate with YouTube
+            # Check if user is already authenticated through session
+            if not session_manager.is_logged_in:
+                self._show_error("Please login first")
+                return
+                
+            # Authenticate with YouTube - this will use browser OAuth
             self._update_progress(20, "Authenticating with YouTube...")
-            uploader.authenticate()
+            authenticated = uploader.authenticate()
+            
+            if not authenticated:
+                self._show_error("YouTube authentication failed")
+                return
             
             # Get upload settings from form
             metadata = build_metadata_from_form(

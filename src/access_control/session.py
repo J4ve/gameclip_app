@@ -147,6 +147,7 @@ class SessionManager:
         
         return {
             'email': self._current_user.get('email', 'Unknown'),
+            'name': self._current_user.get('name', None),  # Add name field
             'role': self._current_role.name.title(),
             'status': status,
             'permissions': f"{len(self._current_role.permissions)} permissions"
