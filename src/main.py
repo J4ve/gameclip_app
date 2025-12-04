@@ -40,11 +40,11 @@ def main(page: ft.Page):
             print("Page updated")
             
             # Show welcome message
-            page.snack_bar = ft.SnackBar(
+            snack_bar = ft.SnackBar(
                 content=ft.Text(f"Welcome, {user_info.get('email', 'Guest')}! Role: {role.name.title()}"),
                 action="OK"
             )
-            page.snack_bar.open = True
+            snack_bar.open = True
             page.update()
         except Exception as e:
             print(f"Error creating main window: {e}")

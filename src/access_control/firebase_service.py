@@ -200,7 +200,7 @@ class FirebaseService:
                 
                 if docs:
                     docs[0].reference.update({
-                        'last_login': datetime.now(datetime.utc)
+                        'last_login': datetime.now(timezone.utc)
                     })
                     print(f"Updated last login for UID {uid_or_email}")
                     return True
@@ -242,7 +242,7 @@ class FirebaseService:
             
             if doc.exists:
                 user_data = doc.to_dict()
-                today = datetime.now(datetime.utc).date().isoformat()
+                today = datetime.now(timezone.utc).date().isoformat()
                 
                 # Reset daily count if new day
                 if user_data.get('daily_reset_date') != today:
