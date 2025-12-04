@@ -15,6 +15,7 @@ class SessionManager:
         self._current_role: Optional[Role] = None
         self._is_logged_in: bool = False
         self._auth_token: Optional[str] = None
+        self._last_user: Optional[Dict[str, Any]] = None  # Store last logged in user
     
     @property
     def current_user(self) -> Optional[Dict[str, Any]]:
@@ -58,16 +59,51 @@ class SessionManager:
         self._is_logged_in = True
         self._auth_token = auth_token
         
+        # Store as last user if it's not a guest
+        if role.role_type != RoleType.GUEST:
+            self._last_user = user_info.copy()
+        
         print(f"User logged in: {user_info.get('email', 'Unknown')} as {role.name}")
     
-    def logout(self):
-        """Clear user session"""
+    def logout(self, clear_tokens: bool = True):
+        """Clear user session and optionally clear OAuth tokens"""
         self._current_user = None
         self._current_role = None
         self._is_logged_in = False
         self._auth_token = None
         
+        if clear_tokens:
+            # Clear OAuth tokens when logging out
+            self._clear_oauth_tokens()
+        
         print("User logged out")
+    
+    def _clear_oauth_tokens(self):
+        """Clear OAuth token files"""
+        import os
+        token_files = [
+            "uploader/token.pickle",
+            "uploader/token.json", 
+            "token.pickle",
+            "token.json"
+        ]
+        
+        for token_file in token_files:
+            try:
+                if os.path.exists(token_file):
+                    os.remove(token_file)
+                    print(f"Cleared OAuth token: {token_file}")
+            except Exception as e:
+                print(f"Could not clear token {token_file}: {e}")
+    
+    @property
+    def last_user(self) -> Optional[Dict[str, Any]]:
+        """Get last logged in user (non-guest)"""
+        return self._last_user
+    
+    def has_previous_user(self) -> bool:
+        """Check if there's a previous non-guest user"""
+        return self._last_user is not None
     
     def has_permission(self, permission_name: str) -> bool:
         """Check if current user has specific permission"""

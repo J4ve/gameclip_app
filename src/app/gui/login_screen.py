@@ -6,7 +6,6 @@ Allows users to login as guest or with Google authentication
 import flet as ft
 from typing import Callable, Optional
 from access_control.roles import RoleManager, RoleType
-from access_control.auth.firebase_auth_mock import get_firebase_auth
 import os
 
 
@@ -43,7 +42,7 @@ class LoginScreen:
         
         # App title
         title = ft.Text(
-            "🎮 Video Merger App",
+            "📽️ Video Merger App",
             size=32,
             weight=ft.FontWeight.BOLD,
             color=ft.Colors.BLUE_400,
@@ -131,7 +130,8 @@ class LoginScreen:
                     self.loading_ring,
                     self.google_login_button
                 ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
-                self.status_text
+                self.status_text,
+                self._build_previous_user_section()  # Add previous user section
             ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15),
             padding=20,
             border=ft.border.all(1, ft.Colors.GREY_600),
@@ -194,17 +194,16 @@ class LoginScreen:
             self._show_error(f"Guest login failed: {str(ex)}")
     
     def _handle_google_login(self, e):
-        """Handle Google OAuth login using real OAuth flow"""
-        import subprocess
-        import sys
-        import json
-        import os
-        
+        """Handle Google OAuth login - clears tokens first for fresh authentication"""
         if self.is_logging_in:
             return
         
         self._set_loading(True)
-        self._show_status("Starting Google authentication...")
+        self._show_status("Clearing previous tokens...")
+        
+        # Clear tokens first to force fresh authentication
+        from access_control.session import session_manager
+        session_manager._clear_oauth_tokens()
         
         try:
             # Use the actual YouTube uploader authentication
@@ -253,11 +252,9 @@ class LoginScreen:
                 }
             
             # Create role object
-            from ..roles import RoleManager
             role = RoleManager.create_role_by_name(user_data["role"])
             
             # Authenticate with session manager - this saves the session
-            from ..session import session_manager
             session_manager.login(user_data, role)
             
             self._show_status("Authentication successful!")
@@ -314,3 +311,56 @@ class LoginScreen:
         """Hide error/status message"""
         self.status_text.visible = False
         self.page.update()
+    
+    def _build_previous_user_section(self):
+        """Build section to login as previous user if available"""
+        from access_control.session import session_manager
+        
+        if not session_manager.has_previous_user():
+            return ft.Container()  # Empty container if no previous user
+            
+        last_user = session_manager.last_user
+        user_display = last_user.get('name') or last_user.get('email', 'Previous User')
+        
+        previous_user_button = ft.TextButton(
+            f"Login as {user_display}",
+            icon=ft.Icons.PERSON_OUTLINE,
+            on_click=self._handle_previous_user_login,
+            style=ft.ButtonStyle(
+                color=ft.Colors.GREEN_400,
+                padding=ft.padding.symmetric(horizontal=10, vertical=5)
+            )
+        )
+        
+        return ft.Container(
+            content=ft.Column([
+                ft.Divider(color=ft.Colors.GREY_600),
+                ft.Text("Quick Login", size=12, color=ft.Colors.GREY_400),
+                previous_user_button
+            ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            margin=ft.margin.only(top=10)
+        )
+    
+    def _handle_previous_user_login(self, e):
+        """Handle login as previous user"""
+        from access_control.session import session_manager
+        
+        if not session_manager.has_previous_user():
+            self._show_error("No previous user available")
+            return
+            
+        last_user = session_manager.last_user
+        
+        try:
+            # Create role based on stored user data
+            role = RoleManager.create_role_by_name(last_user.get('role', 'normal'))
+            
+            # Call login completion callback
+            if self.on_login_complete:
+                self.on_login_complete(last_user, role)
+            else:
+                self._show_error("No login completion callback set!")
+                
+        except Exception as ex:
+            print(f"Previous user login error: {ex}")
+            self._show_error(f"Failed to login as previous user: {str(ex)}")

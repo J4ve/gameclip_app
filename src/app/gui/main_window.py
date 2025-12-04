@@ -310,50 +310,30 @@ class MainWindow:
         )
     
     def _handle_logout(self, e):
-        """Handle logout button click"""
-        # Show confirmation dialog
+        """Handle logout button click - default to keeping tokens"""
+        # Show simple confirmation dialog
         def confirm_logout(e):
             dialog.open = False
             self.page.update()
             
-            session_manager.logout()
+            print("Logout confirmed - keeping tokens for quick re-login")
             
-            # Restart the app by clearing page and showing login screen again
-            self.page.clean()
-            from access_control.gui.auth_screen import LoginScreen
-            
-            def handle_login_complete(user_info, role):
-                session_manager.login(user_info, role)
-                self.page.clean()
-                new_window = MainWindow(self.page)
-                self.page.add(new_window.build())
-                self.page.update()
-                
-                self.page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
-                    action="OK"
-                )
-                self.page.snack_bar.open = True
-                self.page.update()
-            
-            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
-            self.page.add(login_screen.build())
-            self.page.update()
+            # Logout but keep OAuth tokens (default behavior)
+            session_manager.logout(clear_tokens=False)
+            self._return_to_login()
         
         def cancel_logout(e):
             dialog.open = False
             self.page.update()
         
         # Get user display name safely
-        user_name = None
-        if session_manager.current_user:
-            user_name = session_manager.current_user.get('name')
-        user_display = user_name or session_manager.email or 'User'
+        user_info = session_manager.get_user_display_info()
+        user_display = user_info.get('name') or user_info.get('email', 'User')
         
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Confirm Logout"),
-            content=ft.Text(f"Are you sure you want to logout {user_display}?"),
+            content=ft.Text(f"Are you sure you want to logout {user_display}?\n\n(Your login credentials will be saved for quick re-login)"),
             actions=[
                 ft.TextButton("Cancel", on_click=cancel_logout),
                 ft.TextButton("Logout", on_click=confirm_logout),
@@ -364,6 +344,62 @@ class MainWindow:
         self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()
+    
+    def _return_to_login(self):
+        """Return to login screen after logout"""
+        print("Returning to login screen...")
+        
+        # Clear the entire page
+        self.page.clean()
+        
+        # Recreate the login screen
+        def handle_login_complete(user_info, role):
+            """Called after successful re-login"""
+            print(f"Re-login complete: {user_info}, Role: {role.name}")
+            
+            # Set global session
+            session_manager.login(user_info, role)
+            
+            # Clear page and show main window again
+            self.page.clean()
+            
+            try:
+                new_window = MainWindow(self.page)
+                main_layout = new_window.build()
+                self.page.add(main_layout)
+                self.page.update()
+                
+                # Show welcome back message
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
+                    action="OK"
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+                
+            except Exception as ex:
+                print(f"Error recreating main window: {ex}")
+                self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
+                self.page.update()
+        
+        # Show login screen
+        print("Creating login screen...")
+        try:
+            from .login_screen import LoginScreen
+            print("LoginScreen imported successfully")
+            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+            print("LoginScreen instance created")
+            login_ui = login_screen.build()
+            print("Login UI built")
+            self.page.add(login_ui)
+            print("Login UI added to page")
+            self.page.update()
+            print("Page updated - login screen should be visible")
+        except Exception as login_ex:
+            print(f"Error creating login screen: {login_ex}")
+            # Fallback error display
+            self.page.add(ft.Text(f"Login Error: {str(login_ex)}", color=ft.Colors.RED))
+            self.page.update()
     
     def _open_settings(self, e):
         """Open settings dialog"""

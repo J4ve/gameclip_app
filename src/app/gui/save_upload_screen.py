@@ -810,7 +810,8 @@ class SaveUploadScreen:
         """Show confirmation dialog for upload"""
         filename = self.filename_field.value or "merged_video"
         title = self.title_field.value or filename
-        description = self.description_field.value or "Uploaded via VideoMerger App"
+        description = (self.description_field.value 
+                       or "Uploaded via VideoMerger App\nGitHub: https://github.com/J4ve/videomerger_app"),
         tags = self.tags_field.value or "videomerger,app"
         visibility = self.visibility_dropdown.value.lower()
         
@@ -906,7 +907,8 @@ class SaveUploadScreen:
             # Get upload settings from form
             metadata = build_metadata_from_form(
                 title=self.title_field.value or "Merged Video",
-                description=self.description_field.value or "Uploaded via VideoMerger App",
+                description=(self.description_field.value 
+                       or "Uploaded via VideoMerger App\nGitHub: https://github.com/J4ve/videomerger_app"),
                 tags=self.tags_field.value or "",
                 visibility=self.visibility_dropdown.value.lower(),
                 made_for_kids=self.made_for_kids_checkbox.value

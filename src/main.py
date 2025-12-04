@@ -1,6 +1,6 @@
 import flet as ft
 from app.gui import MainWindow
-from access_control.gui.auth_screen import LoginScreen
+from app.gui.login_screen import LoginScreen
 from access_control.session import session_manager
 
 
@@ -9,7 +9,7 @@ def main(page: ft.Page):
     page.title = "Video Merger App"
     page.theme_mode = ft.ThemeMode.DARK
     page.window_width = 1200
-    page.window_height = 800
+    page.window_height = 950
     page.window_min_width = 800
     page.window_min_height = 600
     
