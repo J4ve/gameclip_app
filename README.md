@@ -95,14 +95,14 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Metadata template system
 
 ### Milestone 5: Access Control System
-- [ ] Firebase project setup
+- [x] Firebase project setup
 - [ ] Enable Authentication & Firestore
 - [x] Implement Login / Signup / Logout
 - [x] Load user roles on login
 - [x] Define roles: guest, user, premium, admin
 - [ ] Create Firestore user documents
 - [ ] Apply custom role claims
-- [ ] Role-based UI restrictions
+- [x] Role-based UI restrictions
 - [ ] Guest/User: watermark + merge limits
 - [ ] Premium: full access, no watermark
 - [ ] Admin dashboard (view users)
