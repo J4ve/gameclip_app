@@ -97,9 +97,9 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ### Milestone 5: Access Control System
 - [ ] Firebase project setup
 - [ ] Enable Authentication & Firestore
-- [ ] Implement Login / Signup / Logout
-- [ ] Load user roles on login
-- [ ] Define roles: guest, user, premium, admin
+- [x] Implement Login / Signup / Logout
+- [x] Load user roles on login
+- [x] Define roles: guest, user, premium, admin
 - [ ] Create Firestore user documents
 - [ ] Apply custom role claims
 - [ ] Role-based UI restrictions
