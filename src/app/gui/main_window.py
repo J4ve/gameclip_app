@@ -348,58 +348,37 @@ class MainWindow:
     def _return_to_login(self):
         """Return to login screen after logout"""
         print("Returning to login screen...")
-        
-        # Clear the entire page
         self.page.clean()
-        
-        # Recreate the login screen
+        self.page.update()
+        # Prevent duplicate login screens by cleaning overlays
+        self.page.overlay.clear()
+        self.page.update()
+        # Show login screen
+        from .login_screen import LoginScreen
         def handle_login_complete(user_info, role):
-            """Called after successful re-login"""
             print(f"Re-login complete: {user_info}, Role: {role.name}")
-            
-            # Set global session
             session_manager.login(user_info, role)
-            
-            # Clear page and show main window again
             self.page.clean()
-            
+            self.page.update()
             try:
                 new_window = MainWindow(self.page)
                 main_layout = new_window.build()
                 self.page.add(main_layout)
                 self.page.update()
-                
-                # Show welcome back message
                 self.page.snack_bar = ft.SnackBar(
                     content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
                     action="OK"
                 )
                 self.page.snack_bar.open = True
                 self.page.update()
-                
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
                 self.page.update()
-        
-        # Show login screen
-        print("Creating login screen...")
-        try:
-            from .login_screen import LoginScreen
-            print("LoginScreen imported successfully")
-            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
-            print("LoginScreen instance created")
-            login_ui = login_screen.build()
-            print("Login UI built")
-            self.page.add(login_ui)
-            print("Login UI added to page")
-            self.page.update()
-            print("Page updated - login screen should be visible")
-        except Exception as login_ex:
-            print(f"Error creating login screen: {login_ex}")
-            # Fallback error display
-            self.page.add(ft.Text(f"Login Error: {str(login_ex)}", color=ft.Colors.RED))
-            self.page.update()
+        login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+        login_ui = login_screen.build()
+        self.page.add(login_ui)
+        self.page.update()
     
     def _open_settings(self, e):
         """Open settings dialog"""
