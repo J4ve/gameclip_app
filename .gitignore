@@ -167,3 +167,9 @@ src/uploader/client_secret.json
 src/uploader/token.json
 *.secret.json
 credentials/
+
+# Firebase Secrets
+access_control/auth/serviceAccountKey.json
+access_control/auth/.user_session
+access_control/config/firebase_config.json
+token.pickle

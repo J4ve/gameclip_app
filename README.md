@@ -69,7 +69,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ### Milestone 1: Project Setup & Foundation ✅
 - [x] Initialize repository structure
 - [x] Set up virtual environment
-- [x] Install core dependencies (flet, ffmpeg-python, pillow, requests, tqdm)
+- [x] Install core dependencies
 - [x] Create README documentation
 - [x] Set up GitHub repository with proper branching
 - [x] Create initial project structure (src/, tests/, configs/)
@@ -168,7 +168,7 @@ source env/bin/activate
 
 **Option 1: Install directly (recommended for development)**
 ```bash
-pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client firebase-admin pyrebase4
 ```
 
 **Option 2: Use requirements file**

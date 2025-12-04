@@ -1,0 +1,72 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function: get user role from custom claims
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    // Helper function: check if user is admin
+    function isAdmin() {
+      return getUserRole() == 'admin';
+    }
+    
+    // Helper function: check if user is dev or admin
+    function isDev() {
+      return getUserRole() in ['dev', 'admin'];
+    }
+    
+    // Helper function: check if user is premium or above
+    function isPremium() {
+      return getUserRole() in ['premium', 'dev', 'admin'];
+    }
+    
+    // Users collection - users can read own doc, admins can read all
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+    
+    // Videos collection - role-based access
+    match /videos/{videoId} {
+      // Anyone can read
+      allow read: if true;
+      
+      // Only logged in users can create
+      allow create: if request.auth != null;
+      
+      // Owner or admin can update/delete
+      allow update, delete: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Logs collection - dev/admin only
+    match /logs/{logId} {
+      allow read, write: if isDev();
+    }
+    
+    // Admin data - admin only
+    match /admin/{document=**} {
+      allow read, write: if isAdmin();
+    }
+    
+    // Default: deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// Firebase Storage rules (separate file: storage.rules)
+// service firebase.storage {
+//   match /b/{bucket}/o {
+//     // Videos folder - owner or admin can read/write
+//     match /videos/{userId}/{videoId} {
+//       allow read: if request.auth != null;
+//       allow write: if request.auth != null && 
+//         (request.auth.uid == userId || request.auth.token.role == 'admin');
+//     }
+//   }
+// }
