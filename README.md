@@ -88,7 +88,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 
 ### Milestone 4: Core Uploader ✅
 - [x] YouTube API auth setup (OAuth 2.0)
-- [x] Video upload with requests
+- [x] Video upload
 - [x] Upload progress bars
 - [x] JSON/YAML config for title/description/tags
 - [x] Upload compiled video with template
@@ -209,7 +209,7 @@ source env/bin/activate
 
 **Option 1: Install directly (recommended for development)**
 ```bash
-pip install flet ffmpeg-python pillow requests tqdm pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client firebase-admin pyrebase4
+pip install flet ffmpeg-python flet-video pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client firebase-admin pyrebase4
 ```
 
 **Option 2: Use requirements file**

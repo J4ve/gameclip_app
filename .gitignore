@@ -162,6 +162,9 @@ cython_debug/
 # Flet
 storage/
 
+# Video concat list cache
+temp_concat_list.txt
+
 # OAuth & Secrets
 configs/client_secret.json
 configs/firebase-admin-key.json
