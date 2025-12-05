@@ -280,7 +280,12 @@ For more details on running the app, refer to the [Getting Started Guide](https:
 
 ### Windows
 
-Remember to always delete the build folder when rebuilding the app and run your terminal as an administrator for less errors.
+*For less errors:*
+
+Remember to always delete the build folder when rebuilding the app and run your terminal as an administrator.
+
+Also close file managers or any applications that may be accessing the app directory.
+
 (We experienced it the hard way)
 
 ```bash
