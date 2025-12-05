@@ -279,36 +279,15 @@ For more details on running the app, refer to the [Getting Started Guide](https:
 ## 📦 Build the App
 
 ### Windows
+
+Remember to always delete the build folder when rebuilding the app and run your terminal as an administrator for less errors.
+(We experienced it the hard way)
+
 ```bash
 flet build windows -v
 ```
 For more details, see the [Windows Packaging Guide](https://flet.dev/docs/publish/windows/).
 
-### Linux
-```bash
-flet build linux -v
-```
-For more details, see the [Linux Packaging Guide](https://flet.dev/docs/publish/linux/).
-
-### macOS
-```bash
-flet build macos -v
-```
-For more details, see the [macOS Packaging Guide](https://flet.dev/docs/publish/macos/).
-
-### Android
-```bash
-flet build apk -v
-```
-For more details on building and signing `.apk` or `.aab`, see the [Android Packaging Guide](https://flet.dev/docs/publish/android/).
-
-### iOS
-```bash
-flet build ipa -v
-```
-For more details on building and signing `.ipa`, see the [iOS Packaging Guide](https://flet.dev/docs/publish/ios/).
-
----
 
 ## 📚 Documentation
 - **[Software Requirements Specification (SRS)](./Group7_LTSRS.pdf)** - Complete system requirements and specifications (v1.0, October 2025)
