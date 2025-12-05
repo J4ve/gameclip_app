@@ -203,7 +203,7 @@ class MainWindow:
             icon=ft.Icons.LOGOUT,
             icon_color=ft.Colors.RED_400,
             tooltip="Logout",
-            on_click=self._handle_logout,
+            on_click=lambda e: self._handle_logout(e),
             width=30,
             height=30
         )
@@ -310,49 +310,32 @@ class MainWindow:
         )
     
     def _handle_logout(self, e):
-        """Handle logout button click - default to keeping tokens"""
-        # Show simple confirmation dialog
-        def confirm_logout(e):
-            dialog.open = False
-            self.page.update()
-            
-            print("Logout confirmed - keeping tokens for quick re-login")
-            
-            # Logout but keep OAuth tokens (default behavior)
+        print("logout clicked")
+        try:
             session_manager.logout(clear_tokens=False)
-            self._return_to_login()
-        
-        def cancel_logout(e):
-            dialog.open = False
+        except Exception as ex:
+            print(f"logout error: {ex}")
+        try:
+            self.page.snack_bar = ft.SnackBar(content=ft.Text("Signing out..."))
+            self.page.snack_bar.open = True
             self.page.update()
-        
-        # Get user display name safely
-        user_info = session_manager.get_user_display_info()
-        user_display = user_info.get('name') or user_info.get('email', 'User')
-        
-        dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("Confirm Logout"),
-            content=ft.Text(f"Are you sure you want to logout {user_display}?\n\n(Your login credentials will be saved for quick re-login)"),
-            actions=[
-                ft.TextButton("Cancel", on_click=cancel_logout),
-                ft.TextButton("Logout", on_click=confirm_logout),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-        )
-        
-        self.page.overlay.append(dialog)
-        dialog.open = True
-        self.page.update()
+        except Exception:
+            pass
+        self._return_to_login()
     
     def _return_to_login(self):
         """Return to login screen after logout"""
         print("Returning to login screen...")
+        try:
+            self.page.dialog = None
+        except Exception:
+            pass
+        try:
+            self.page.overlay.clear()
+        except Exception:
+            pass
+        # Use Flet's clean() to reset page reliably, then render login UI immediately
         self.page.clean()
-        self.page.update()
-        # Prevent duplicate login screens by cleaning overlays
-        self.page.overlay.clear()
-        self.page.update()
         # Show login screen
         from .login_screen import LoginScreen
         def handle_login_complete(user_info, role):
@@ -363,7 +346,7 @@ class MainWindow:
             try:
                 new_window = MainWindow(self.page)
                 main_layout = new_window.build()
-                self.page.add(main_layout)
+                self.page.controls = [main_layout]
                 self.page.update()
                 self.page.snack_bar = ft.SnackBar(
                     content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
@@ -377,7 +360,7 @@ class MainWindow:
                 self.page.update()
         login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
         login_ui = login_screen.build()
-        self.page.add(login_ui)
+        self.page.controls = [login_ui]
         self.page.update()
     
     def _open_settings(self, e):
