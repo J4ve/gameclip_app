@@ -1,19 +1,8 @@
 # 🎮 Video Merger and Uploader
 
-An open-source desktop tool for streamers and video editors to automatically upload bulk clips and VODs to YouTube — no manual renaming, no repetitive settings, and optional automatic highlight compilations.
+An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube — no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
 
 > **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./Group7_LTSRS.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
-
----
-
-## ✨ Features (Planned)
-- **Bulk Upload**: Upload multiple clips at once with template-based titles, descriptions, and tags.
-- **Config Profiles**: Save specific settings (tags, titles, playlists).
-- **Manifest Support**: Use CSV/JSON files to define metadata, publish dates, and highlight flags.
-- **Compilation Mode**: Automatically merge selected clips into a single highlight video using FFmpeg.
-- **Thumbnail Automation**: Generate thumbnails from video frames if none are provided.
-- **Scheduling**: Spread uploads over time using YouTube's `publishAt` scheduling.
-- **GUI (Flet)**: Drag & drop interface, upload queue visualization, and progress bars.
 
 ---
 
@@ -29,9 +18,7 @@ An open-source desktop tool for streamers and video editors to automatically upl
 **Key Dependencies**
 - `flet` - Cross-platform GUI framework
 - `ffmpeg-python` - Python bindings for FFmpeg
-- `pillow` - Image processing (thumbnails)
-- `requests` - HTTP library for API calls
-- `tqdm` - Progress bars for uploads
+- `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
 
 **Configuration & Data**
 - JSON/YAML (templates, profiles)
@@ -82,40 +69,93 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ### Milestone 1: Project Setup & Foundation ✅
 - [x] Initialize repository structure
 - [x] Set up virtual environment
-- [x] Install core dependencies (flet, ffmpeg-python, pillow, requests, tqdm)
+- [x] Install core dependencies
 - [x] Create README documentation
 - [x] Set up GitHub repository with proper branching
 - [x] Create initial project structure (src/, tests/, configs/)
 
-### Milestone 2: GUI (Flet)
+### Milestone 2: GUI (Flet) ✅
 - [x] GUI skeleton (tabs: Upload, Compilation, Config)
-- [ ] Drag & drop folder support
-- [ ] Upload queue + progress bars
-- [ ] File browser integration
-- [ ] Real-time status updates with tqdm
+- ~~[ ] Drag & drop folder support~~
+- [x] Select videos through clicking
+- [x] File browser integration
 
-### Milestone 3: Compilation Feature
-- [ ] Video selection interface
-- [ ] FFmpeg integration for merging clips
-- [ ] Preview functionality
-- [ ] Output format configuration
-- [ ] Upload compiled video with template
+### Milestone 3: Compilation Feature ✅
+- [x] Video selection interface
+- [x] FFmpeg integration for merging clips
+- [x] Preview functionality
+- [x] Output format configuration
 
-### Milestone 4: Core Uploader
-- [ ] YouTube API auth setup (OAuth 2.0)
-- [ ] Single video upload with requests
-- [ ] Bulk folder upload
-- [ ] JSON/YAML config for title/description/tags
-- [ ] Metadata template system
+### Milestone 4: Core Uploader ✅
+- [x] YouTube API auth setup (OAuth 2.0)
+- [x] Video upload
+- [x] Upload progress bars
+- [x] JSON/YAML config for title/description/tags
+- [x] Upload compiled video with template
+- [x] Metadata template system
 
-### Milestone 5: Scheduling + Polish
+### Milestone 5: Access Control System
+- [x] Firebase project setup
+- [ ] Enable Authentication & Firestore
+- [x] Implement Login / Signup / Logout
+- [x] Load user roles on login
+- [x] Define roles: guest, user, premium, admin
+- [ ] Create Firestore user documents
+- [ ] Apply custom role claims
+- [x] Role-based UI restrictions
+- [ ] Guest/User: watermark + merge limits
+- [ ] Premium: full access, no watermark
+- [ ] Admin dashboard (view users)
+- [ ] Admin role editing (promote/demote)
+- [ ] Admin ban/unban users
+- [ ] Firestore security rules by role
+- [ ] Comprehensive role testing & bypass attempts
+
+#### Python/Firebase Access Control Integration
+This project uses a modular Python/Flet system for secure, role-based user management via Firebase Authentication and Firestore:
+- **Email/password authentication** (Firebase)
+- **Role assignment**: guest, normal, premium, dev, admin
+- **Session management** and custom claims
+- **Firestore security rules** for data protection
+- **Flet UI screens** for login, registration, and role-based access
+
+**Setup Steps:**
+1. Create a Firebase project and enable Authentication (Email/Password) and Firestore.
+2. Download your `firebase_config.json` and place it in `src/access_control/config/` (never commit secrets; use `.gitignore`).
+3. Install dependencies: `pip install pyrebase4 firebase-admin flet`
+4. Copy `src/access_control/security/firestore.rules` to your Firebase project.
+5. Integrate with Flet using `src/access_control/gui/example_integration.py` and the modules in `src/access_control/auth/`.
+
+**Usage Example:**
+```python
+from access_control.auth.firebase_auth import FirebaseAuth
+from access_control.auth.user_session import UserSession
+from access_control.gui.login_screen import LoginScreen
+
+firebase_auth = FirebaseAuth(config_path='config/firebase_config.json')
+login_screen = LoginScreen(firebase_auth)
+session = UserSession(firebase_auth)
+role = session.get_role()
+if role == 'admin':
+    # Show admin features
+    pass
+```
+
+**Security Notes:**
+- Never commit secrets; always use `.gitignore` for config files.
+- Roles are managed via Firebase custom claims and Firestore documents.
+- User sessions are handled securely in Python; tokens are refreshed as needed.
+
+For more details, see `src/access_control/README.md` and subdirectory documentation.
+
+### Milestone 6: Scheduling + Polish
 - [ ] Support `publishAt` scheduling
 - [ ] Thumbnail generation with Pillow
 - [ ] Upload progress tracking
 - [ ] Logs + error retries
 - [ ] CSV manifest support
 
-### Milestone 6: Distribution
+### Milestone 7: Distribution
 - [ ] Package with Flet pack / PyInstaller
 - [ ] GitHub Actions CI/CD pipeline
 - [ ] Windows executable build
@@ -125,6 +165,24 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 ---
 
 ## 📦 Installation & Setup
+
+
+### API Credentials (YouTube & Firebase)
+
+You must provide your own Google API OAuth credentials and Firebase Admin SDK key for uploads and user management. **Both files must be placed in the `configs/` folder and should NOT be committed to Git or shared publicly.**
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (or select your existing one)
+3. Enable the YouTube Data API v3
+4. Go to "APIs & Services" → "Credentials"
+5. Create OAuth 2.0 Client ID (Desktop app)
+6. Download the `client_secret.json` file
+7. Place it in `configs/client_secret.json`
+8. In [Firebase Console](https://console.firebase.google.com/), go to Project Settings → Service Accounts → Generate new private key
+9. Download the `firebase-admin-key.json` file
+10. Place it in `configs/firebase-admin-key.json`
+11. **Do not commit these files to Git!**
+12. If you ever accidentally commit them, delete them from Git history and regenerate credentials in Google Cloud Console and Firebase Console.
 
 ### Clone the repository
 ```bash
@@ -151,7 +209,7 @@ source env/bin/activate
 
 **Option 1: Install directly (recommended for development)**
 ```bash
-pip install flet ffmpeg-python pillow requests tqdm pytest
+pip install flet ffmpeg-python flet-video pytest google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client firebase-admin pyrebase4
 ```
 
 **Option 2: Use requirements file**
