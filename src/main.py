@@ -33,8 +33,8 @@ def main(page: ft.Page):
             main_layout = window.build()
             print("MainWindow layout built")
             
-            page.add(main_layout)
-            print("Layout added to page")
+            page.controls = [main_layout]
+            print("Layout set as sole control")
             
             page.update()
             print("Page updated")
@@ -54,7 +54,7 @@ def main(page: ft.Page):
     
     # Show login screen first
     login_screen = LoginScreen(page, on_login_complete=handle_login_complete)
-    page.add(login_screen.build())
+    page.controls = [login_screen.build()]
     page.update()
 
 

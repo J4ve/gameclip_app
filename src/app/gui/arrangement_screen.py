@@ -3,7 +3,7 @@ Arrangement Screen - Video preview & ordering (Step 2)
 """
 
 import flet as ft
-# from configs.config import Config # Keeping this if you need it later
+import flet_video
 
 class ArrangementScreen:
     """Second screen: Arrange clips and preview"""
@@ -33,9 +33,9 @@ class ArrangementScreen:
             
             # Create the Flet Video Player
             # Note: volume=0.5, autoplay=False by default
-            preview_content = ft.Video(
-                playlist=[ft.VideoMedia(current_video_path)],
-                playlist_mode=ft.PlaylistMode.SINGLE,
+            preview_content = flet_video.Video(
+                playlist=[flet_video.VideoMedia(current_video_path)],
+                playlist_mode=flet_video.PlaylistMode.SINGLE,
                 fill_color=ft.Colors.BLACK,
                 aspect_ratio=16/9,
                 volume=100,
