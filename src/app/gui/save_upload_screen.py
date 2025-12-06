@@ -366,7 +366,11 @@ class SaveUploadScreen:
         
         # Role info section
         role_info = ft.Column([
-            ft.Text(f"Role: {session_manager.role_name.title()}", size=12, color=ft.Colors.CYAN_400),
+            ft.Text(
+                f"{'Free tier user' if session_manager.role_name.lower() == 'free' else f'Role: {session_manager.role_name.title()}'}",
+                size=12,
+                color=ft.Colors.CYAN_400
+            ),
             ft.Text(watermark_warning, size=10, color=ft.Colors.ORANGE_400, visible=bool(watermark_warning)),
         ], spacing=2)
         

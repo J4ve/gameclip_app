@@ -88,10 +88,26 @@ class ConfigTab:
         )
     
     def _build_account_section(self):
-        """Build account information section"""
+        """Build account information section with profile picture"""
         user_info = session_manager.get_user_display_info()
         user_name = user_info.get('name', 'Not logged in')
+        user_email = user_info.get('email', '')
         user_role = user_info.get('role', 'None')
+        user_picture = user_info.get('picture', '')
+        
+        # Create profile picture or icon
+        if user_picture:
+            profile_avatar = ft.CircleAvatar(
+                foreground_image_src=user_picture,
+                radius=30,
+                bgcolor=ft.Colors.BLUE_700
+            )
+        else:
+            profile_avatar = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.PERSON, size=35, color=ft.Colors.WHITE),
+                radius=30,
+                bgcolor=ft.Colors.GREY_700
+            )
         
         # Role permissions display
         permissions = []
@@ -113,13 +129,18 @@ class ConfigTab:
             content=ft.Column([
                 ft.Text("Account Information", size=18, weight=ft.FontWeight.BOLD),
                 ft.Row([
-                    ft.Icon(ft.Icons.ACCOUNT_CIRCLE, color=ft.Colors.BLUE_400),
+                    profile_avatar,
                     ft.Column([
-                        ft.Text(f"User: {user_name}", size=14),
-                        ft.Text(f"Role: {user_role}", size=12, color=ft.Colors.GREY_400),
+                        ft.Text(f"{user_name}", size=16, weight=ft.FontWeight.BOLD),
+                        ft.Text(f"{user_email}", size=12, color=ft.Colors.GREY_400),
+                        ft.Text(
+                            f"{'Free tier user' if user_role.lower() == 'free' else f'Role: {user_role.title()}'}",
+                            size=12,
+                            color=ft.Colors.BLUE_400
+                        ),
                         ft.Text(f"Permissions: {permissions_text}", size=10, color=ft.Colors.GREY_500),
                     ], spacing=2),
-                ], spacing=10),
+                ], spacing=15),
             ], spacing=10),
             padding=15,
             bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),

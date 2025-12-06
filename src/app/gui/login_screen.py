@@ -88,8 +88,6 @@ class LoginScreen:
         # Main login container
         login_card = ft.Container(
             content=ft.Column([
-                ft.Icon(ft.Icons.VIDEO_LIBRARY, size=60, color=ft.Colors.BLUE_400),
-                ft.Container(height=10),
                 ft.Text("Welcome", size=24, weight=ft.FontWeight.BOLD),
                 ft.Container(height=5),
                 ft.Text(
@@ -226,7 +224,7 @@ class LoginScreen:
                     "given_name": user_info_response.get('given_name', ''),
                     "family_name": user_info_response.get('family_name', ''),
                     "picture": user_info_response.get('picture', ''),
-                    "role": "normal",  # Default role for OAuth users
+                    "role": "free",  # Default role for OAuth users
                     "provider": "google",
                     "authenticated": True,
                     "google_id": user_info_response.get('id', ''),
@@ -239,7 +237,7 @@ class LoginScreen:
                 user_data = {
                     "email": "authenticated@gmail.com",
                     "name": "Google User",
-                    "role": "normal",
+                    "role": "free",
                     "provider": "google", 
                     "authenticated": True,
                     "uid": "unknown"
@@ -259,7 +257,7 @@ class LoginScreen:
                 if firebase_user_data:
                     # Update user with Firebase data (may have upgraded role, etc.)
                     user_data.update({
-                        "role": firebase_user_data.get("role", "normal"),
+                        "role": firebase_user_data.get("role", "free"),
                         "usage_count": firebase_user_data.get("usage_count", 0),
                         "daily_usage": firebase_user_data.get("daily_usage", 0),
                         "premium_until": firebase_user_data.get("premium_until"),
@@ -375,7 +373,6 @@ class LoginScreen:
         
         return ft.Container(
             content=ft.Column([
-                ft.Divider(color=ft.Colors.GREY_600),
                 ft.Text("Quick Login", size=12, color=ft.Colors.GREY_400),
                 previous_user_button
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -394,7 +391,7 @@ class LoginScreen:
         
         try:
             # Create role based on stored user data
-            role = RoleManager.create_role_by_name(last_user.get('role', 'normal'))
+            role = RoleManager.create_role_by_name(last_user.get('role', 'free'))
             
             # Call login completion callback
             if self.on_login_complete:

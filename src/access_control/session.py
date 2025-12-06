@@ -109,7 +109,7 @@ class SessionManager:
                 firebase_service.update_user_last_login(uid)
 
                 # Check if role needs updating
-                firebase_role = existing_user.get('role', 'normal')
+                firebase_role = existing_user.get('role', 'free')
                 if firebase_role != role.name:
                     print(f"Role mismatch: local={role.name}, firebase={firebase_role}")
                     # Update local role to match Firebase (Firebase is source of truth)
@@ -128,7 +128,12 @@ class SessionManager:
                     'email': email,
                     'name': name,
                     'role': role.name,
-                    'provider': 'google'
+                    'provider': user_info.get('provider', 'google'),
+                    'google_id': user_info.get('google_id', uid),
+                    'picture': user_info.get('picture', ''),
+                    'given_name': user_info.get('given_name', ''),
+                    'family_name': user_info.get('family_name', ''),
+                    'authenticated': user_info.get('authenticated', True)
                 }
                 firebase_service.create_user(user_doc)
 
@@ -248,6 +253,9 @@ class SessionManager:
             return True
         return self._current_role.limits.watermark_enabled
     
+    # CONFIG_MARKER: Limit checking methods
+    # These methods return the configured limits from the user's role
+    
     def get_merge_limit(self) -> int:
         """Get daily merge limit (-1 = unlimited)"""
         if not self._current_role:
@@ -278,27 +286,45 @@ class SessionManager:
         """Check if user is premium"""
         return bool(self._current_role and self._current_role.role_type == RoleType.PREMIUM)
     
-    def is_normal(self) -> bool:
-        """Check if user is normal/standard user"""
-        return bool(self._current_role and self._current_role.role_type == RoleType.NORMAL)
+    def is_free(self) -> bool:
+        """Check if user is free/standard user"""
+        return bool(self._current_role and self._current_role.role_type == RoleType.FREE)
     
     def get_user_display_info(self) -> Dict[str, str]:
-        """Get formatted user info for display"""
+        """Get formatted user info for display (includes picture from Firebase if available)"""
         if not self._current_user or not self._current_role:
             return {
                 'email': 'Not logged in',
                 'role': 'None',
-                'status': 'Offline'
+                'status': 'Offline',
+                'picture': ''
             }
         
         status = "Guest" if self.is_guest else "Logged in"
         
+        # Try to get fresh picture from Firebase if available (skip for guest users)
+        picture_url = self._current_user.get('picture', '')
+        
+        # Attempt to fetch latest from Firebase (only for non-guest users)
+        if not self.is_guest:
+            try:
+                firebase_service = self._get_firebase_service()
+                if firebase_service and firebase_service.is_available:
+                    email = self._current_user.get('email')
+                    if email:
+                        firebase_user = firebase_service.get_user_by_email(email)
+                        if firebase_user and firebase_user.get('picture'):
+                            picture_url = firebase_user.get('picture')
+            except Exception as e:
+                print(f"Could not fetch picture from Firebase: {e}")
+        
         return {
             'email': self._current_user.get('email', 'Unknown'),
-            'name': self._current_user.get('name', 'Unknown'),  # Add name field
+            'name': self._current_user.get('name', 'Unknown'),
             'role': self._current_role.name.title(),
             'status': status,
-            'permissions': f"{len(self._current_role.permissions)} permissions"
+            'permissions': f"{len(self._current_role.permissions)} permissions",
+            'picture': picture_url
         }
 
 

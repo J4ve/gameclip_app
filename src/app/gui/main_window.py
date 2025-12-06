@@ -192,43 +192,49 @@ class MainWindow:
         user_info = session_manager.get_user_display_info()
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
-        self.user_info_text = ft.Text(
-            f"{display_name} ({user_info['role']})",
-            size=12,
-            color=ft.Colors.CYAN_400
-        )
         
-        self.logout_button = ft.IconButton(
-            icon=ft.Icons.LOGOUT,
-            icon_color=ft.Colors.RED_400,
-            tooltip="Logout",
-            on_click=lambda e: self._handle_logout(e),
-            width=30,
-            height=30
-        )
+        # Profile button with user photo and name
+        user_picture_url = user_info.get('picture', '')
         
-        self.settings_button = ft.IconButton(
-            icon=ft.Icons.SETTINGS,
-            icon_color=ft.Colors.GREY_400,
-            tooltip="Settings & Templates",
+        if user_picture_url:
+            # User has profile picture (Google OAuth)
+            profile_image = ft.CircleAvatar(
+                foreground_image_src=user_picture_url,
+                radius=16,
+                bgcolor=ft.Colors.BLUE_700
+            )
+        else:
+            # Guest or no picture - use icon
+            profile_image = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
+                radius=16,
+                bgcolor=ft.Colors.GREY_700
+            )
+        
+        self.profile_button = ft.Container(
+            content=ft.Row([
+                profile_image,
+                ft.Text(display_name, size=13, weight=ft.FontWeight.W_500)
+            ], spacing=8, tight=True),
             on_click=self._open_settings,
-            width=30,
-            height=30
+            padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            border_radius=20,
+            bgcolor=ft.Colors.with_opacity(0.1, "#00ACC1"),
+            border=ft.border.all(1, ft.Colors.with_opacity(0.3, "#00ACC1")),
+            tooltip="Settings & Account",
+            ink=True,
+            animate=ft.Animation(100, "easeOut")
         )
         
         user_section = ft.Container(
-            content=ft.Row([
-                self.user_info_text,
-                self.settings_button,
-                self.logout_button
-            ], spacing=5, alignment=ft.MainAxisAlignment.END),
+            content=self.profile_button,
             right=20,
             top=20
         )
 
         # Settings dialog will be shown when settings button is clicked
 
-        # build the stepper indicator
+        # build the stepper indicator (responsive with side padding)
         stepper = ft.Container(
             content=ft.Row([
                 self.step1_indicator,
@@ -239,10 +245,11 @@ class MainWindow:
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             ),
-            padding=ft.padding.only(top=20, left=200, right=200),
+            padding=20,
             bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
             border_radius=15,
-            margin=ft.margin.symmetric(horizontal=20, vertical=10),
+            margin=ft.margin.symmetric(horizontal=170, vertical=10),
+            expand=False,
         )
 
         # Fixed next button at bottom right
@@ -367,6 +374,11 @@ class MainWindow:
             dialog.open = False
             self.page.update()
         
+        def logout_and_close(e):
+            dialog.open = False
+            self.page.update()
+            self._handle_logout(e)
+        
         # Create config tab instance
         config_tab = ConfigTab(self.page)
         config_content = config_tab.build()
@@ -375,7 +387,7 @@ class MainWindow:
             modal=True,
             title=ft.Row([
                 ft.Icon(ft.Icons.SETTINGS, color=ft.Colors.BLUE_400),
-                ft.Text("Settings & Configuration", size=18)
+                ft.Text("User Settings & Configuration", size=18)
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
@@ -383,9 +395,15 @@ class MainWindow:
                 height=600,
             ),
             actions=[
+                ft.TextButton(
+                    "Logout",
+                    icon=ft.Icons.LOGOUT,
+                    on_click=logout_and_close,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
+                ),
                 ft.TextButton("Close", on_click=close_settings),
             ],
-            actions_alignment=ft.MainAxisAlignment.END,
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
         
         self.page.overlay.append(dialog)
