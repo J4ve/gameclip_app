@@ -233,9 +233,9 @@ This project fulfills requirements for three college courses:
 - ✅ Video compilation workflow: Select → Merge → Verify output
 
 **Manual Test Checklist**:
-- [ ] Login with Google (various test users)
-- [ ] Guest login and feature restrictions
-- [ ] Video file selection and validation
+- [x] Login with Google (various test users)
+- [x] Guest login and feature restrictions
+- [x] Video file selection and validation
 - [ ] FFmpeg merge with progress tracking
 - [ ] YouTube upload with metadata
 - [ ] Role-based UI element visibility
@@ -430,34 +430,7 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - A07 (Authentication Failures): OAuth 2.0 + rate limiting
 - A08 (Software/Data Integrity): Firebase Admin SDK + verified libraries
 
-#### Testing Requirements
-**Unit Tests**
-- [ ] User creation and Firebase sync
-- [ ] Role enforcement (guest vs. premium features)
-- [ ] Session timeout and token refresh
-- [ ] OAuth flow simulation
-
-**Integration Tests**
-- [ ] Full login flow (OAuth → Firebase → Session)
-- [ ] Role-based route access (restricted features)
-- [ ] Admin actions (promote/demote users)
-
-**Manual Test Matrix**
-| Test Case | Expected Result | Status |
-|-----------|----------------|--------|
-| Login with Google | Session created, role loaded | ✅ |
-| Guest login | Limited features, ads shown | ✅ |
-| Premium user | No ads, no watermark | 🔄 |
-| Admin dashboard | View all users, edit roles | 🔄 |
-| Logout | Session cleared, return to login | ✅ |
-| Failed login | Error message, no session | ✅ |
-| Password change | Old password verified | ⏳ |
-| Role-only route | Access denied for non-admin | 🔄 |
-
-**Static Analysis**
-- [ ] Linting with `ruff` or `flake8`
-- [ ] Code formatting with `black`
-- [ ] Security scan with `bandit`
+*For comprehensive testing details, see the "Testing & Quality Assurance" section under Course 2.*
 
 #### Python/Firebase Access Control Integration
 This project uses a modular Python/Flet system for secure, role-based user management via Firebase Authentication and Firestore:
@@ -493,8 +466,6 @@ if role == 'admin':
 - Never commit secrets; always use `.gitignore` for config files.
 - Roles are managed via Firebase custom claims and Firestore documents.
 - User sessions are handled securely in Python; tokens are refreshed as needed.
-
-For more details, see `src/access_control/README.md` and subdirectory documentation.
 
 ### Milestone 6: Scheduling + Polish
 - [ ] Support `publishAt` scheduling

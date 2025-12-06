@@ -4,6 +4,7 @@ Main Window - Wizard Navigation
 
 import flet as ft
 from configs.config import Config
+from .login_screen import LoginScreen
 from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
@@ -98,11 +99,9 @@ class MainWindow:
         self.page.title = Config.APP_TITLE
         self.page.window_width = Config.APP_WIDTH
         self.page.window_height = Config.APP_HEIGHT
-        self.page.window.center() 
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0
-        # TODO: Add app bar with config button
         
     def go_to_step(self, step):
         """Navigate to specific step"""
@@ -337,7 +336,6 @@ class MainWindow:
         # Use Flet's clean() to reset page reliably, then render login UI immediately
         self.page.clean()
         # Show login screen
-        from .login_screen import LoginScreen
         def handle_login_complete(user_info, role):
             print(f"Re-login complete: {user_info}, Role: {role.name}")
             session_manager.login(user_info, role)
