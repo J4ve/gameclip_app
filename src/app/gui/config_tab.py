@@ -437,7 +437,7 @@ class ConfigTab:
                 ft.Divider(),
                 
                 # Database presets section
-                ft.Text("Cloud Presets (Supabase Database)", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_300),
+                ft.Text("Cloud Presets", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_300),
                 ft.Text("Save your presets to the cloud for use across devices", size=10, color=ft.Colors.GREY_500),
                 
                 ft.Row([
