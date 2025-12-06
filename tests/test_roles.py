@@ -6,7 +6,7 @@ Tests role creation, permissions, and RBAC functionality
 import pytest
 from access_control.roles import (
     RoleType, Permission, Role, RoleLimits,
-    GuestRole, FreeRole, PremiumRole, DevRole, AdminRole,
+    GuestRole, FreeRole, PremiumRole, AdminRole,
     RoleManager
 )
 
@@ -19,7 +19,6 @@ class TestRoleType:
         assert RoleType.GUEST.value == "guest"
         assert RoleType.FREE.value == "free"
         assert RoleType.PREMIUM.value == "premium"
-        assert RoleType.DEV.value == "dev"
         assert RoleType.ADMIN.value == "admin"
     
     def test_role_type_count(self):
@@ -172,36 +171,6 @@ class TestPremiumRole:
         assert premium_role.limits.max_video_length_minutes == -1  # Unlimited
         assert premium_role.limits.max_file_size_mb == -1  # Unlimited
 
-
-class TestDevRole:
-    """Test Developer role"""
-    
-    @pytest.fixture
-    def dev_role(self):
-        """Create a dev role for testing"""
-        return DevRole()
-    
-    def test_dev_has_premium_permissions(self, dev_role):
-        """Test that dev has all premium permissions"""
-        assert dev_role.has_permission(Permission.SAVE_VIDEO)
-        assert dev_role.has_permission(Permission.UPLOAD_VIDEO)
-        assert dev_role.has_permission(Permission.MERGE_VIDEOS)
-        assert dev_role.has_permission(Permission.NO_WATERMARK)
-        assert dev_role.has_permission(Permission.NO_ADS)
-        assert dev_role.has_permission(Permission.UNLIMITED_MERGES)
-    
-    def test_dev_has_debug_tools(self, dev_role):
-        """Test that dev has access to debug tools"""
-        assert dev_role.has_permission(Permission.VIEW_LOGS)
-        assert dev_role.has_permission(Permission.ACCESS_DEBUG_TOOLS)
-    
-    def test_dev_lacks_admin_permissions(self, dev_role):
-        """Test that dev doesn't have admin permissions"""
-        assert not dev_role.has_permission(Permission.MANAGE_USERS)
-        assert not dev_role.has_permission(Permission.CHANGE_ROLES)
-        assert not dev_role.has_permission(Permission.BAN_USERS)
-
-
 class TestAdminRole:
     """Test Admin role"""
     
@@ -246,12 +215,6 @@ class TestRoleManager:
         role = RoleManager.create_role_by_name("premium")
         assert isinstance(role, PremiumRole)
         assert role.role_type == RoleType.PREMIUM
-    
-    def test_create_dev_role(self):
-        """Test creating dev role by name"""
-        role = RoleManager.create_role_by_name("dev")
-        assert isinstance(role, DevRole)
-        assert role.role_type == RoleType.DEV
     
     def test_create_admin_role(self):
         """Test creating admin role by name"""
@@ -312,14 +275,11 @@ class TestRoleHierarchy:
     def test_admin_has_most_permissions(self):
         """Test that admin has most permissions"""
         admin = AdminRole()
-        dev = DevRole()
         premium = PremiumRole()
         
         admin_perms = len(admin.permissions)
-        dev_perms = len(dev.permissions)
         premium_perms = len(premium.permissions)
         
-        assert admin_perms > dev_perms
         assert admin_perms > premium_perms
     
     def test_premium_upgrade_path(self):
