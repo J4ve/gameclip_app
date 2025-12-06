@@ -1087,7 +1087,6 @@ class ConfigTab:
             icon=ft.Icons.DELETE_FOREVER,
             tooltip="Delete User" if not is_super_admin else "Super Admin - Cannot be deleted",
             on_click=lambda e, u=user: self._admin_delete_user(u),
-            icon_color=ft.Colors.RED_400,
             disabled=is_super_admin
         )
         

@@ -328,9 +328,10 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 **Logging (Baseline)**
 - [x] Authentication success/failure (console logs)
 - [x] Administrative actions logged (Firebase sync operations)
-- [x] Audit trail skeleton for admin actions (TODO: persistence to Firestore)
-- [ ] Structured logging with log levels and timestamps
-- [ ] Audit log viewer UI with filtering and export
+- [x] Audit trail for admin actions
+- [x] Structured logging with timestamps and session tracking
+- [x] `get_audit_logs()` method for retrieving historical logs
+- [ ] Audit log viewer UI with filtering and export (planned)
 
 **Secure Configuration**
 - [x] Secrets not hard-coded (`.gitignore` for credentials)

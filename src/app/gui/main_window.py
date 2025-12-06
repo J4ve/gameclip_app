@@ -9,7 +9,7 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
-from .admin_dashboard_screen import AdminDashboardScreen
+from .admin_dashboard import AdminDashboardScreen
 from access_control.session import session_manager
 from access_control.roles import Permission
 
@@ -384,7 +384,7 @@ class MainWindow:
                 
                 # Show welcome message
                 snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!")
+                    content=ft.Text(f"Welcome, {user_info.get('name') or user_info.get('email', 'Guest')}!")
                 )
                 self.page.overlay.append(snack_bar)
                 snack_bar.open = True

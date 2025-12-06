@@ -528,28 +528,40 @@ class FirebaseService:
     def log_admin_action(self, admin_email: str, action: str, target_user: str, 
                         details: Optional[Dict[str, Any]] = None, success: bool = True) -> bool:
         """
-        Log administrative action to audit trail
+        Log administrative action to Firestore audit trail
         
-        TODO: Implement full audit logging system:
-        - Store in separate 'admin_audit_logs' collection
-        - Include timestamp, IP address, session info
-        - Restrict read access to admins only
-        - Implement log retention policy
+        Creates a permanent audit record in the 'admin_audit_logs' collection.
+        Each log entry includes:
+        - Admin who performed the action
+        - Action type (role_change, user_creation, user_deletion, etc.)
+        - Target user affected
+        - Timestamp (UTC)
+        - Success/failure status
+        - Additional details (old/new values, reasons, etc.)
+        - Session information for traceability
+        
+        NOTE: IP address capture requires client-side context that isn't available
+        in desktop apps. For production web apps, implement IP capture via request headers.
         
         Args:
             admin_email: Email of admin performing action
-            action: Action type (role_change, disable, delete, etc.)
+            action: Action type (role_change, user_creation, user_deletion, user_update)
             target_user: Email of user being affected
-            details: Additional details about the action
+            details: Additional details about the action (dict)
             success: Whether action succeeded
             
         Returns:
             bool: True if logged successfully, False otherwise
         """
         if not self.is_available:
+            print("[AUDIT] Skipped logging - Firebase unavailable")
             return False
         
         try:
+            # Import session_manager to get session ID
+            from access_control.session import session_manager
+            
+            # Create audit log entry
             log_entry = {
                 'admin_email': admin_email,
                 'action': action,
@@ -557,19 +569,76 @@ class FirebaseService:
                 'details': details or {},
                 'success': success,
                 'timestamp': datetime.now(timezone.utc),
-                'ip_address': 'TODO',  # TODO: Capture IP address
-                'session_id': 'TODO'   # TODO: Capture session ID
+                'session_id': session_manager.session_id if hasattr(session_manager, 'session_id') else 'unknown',
+                'client_type': 'desktop_app',  # Identifies this as desktop client
+                # Note: IP address not available in desktop apps without external service
+                # For web apps, capture via request.remote_addr or X-Forwarded-For header
             }
             
-            # TODO: Store in 'admin_audit_logs' collection
-            # self.db.collection('admin_audit_logs').add(log_entry)
+            # Store in Firestore 'admin_audit_logs' collection
+            doc_ref = self.db.collection('admin_audit_logs').document()
+            doc_ref.set(log_entry)
             
-            print(f"[AUDIT] {admin_email} -> {action} on {target_user}: {success}")
+            # Console log for development/debugging
+            status_emoji = "✅" if success else "❌"
+            print(f"[AUDIT] {status_emoji} {admin_email} -> {action} on {target_user}")
+            print(f"        Details: {details}")
+            
             return True
             
         except Exception as e:
-            print(f"Failed to log admin action: {e}")
+            print(f"[AUDIT ERROR] Failed to log action: {e}")
+            # Don't fail the operation if logging fails, just warn
             return False
+    
+    def get_audit_logs(self, limit: int = 100, admin_filter: str = None, 
+                       action_filter: str = None, start_date: datetime = None) -> list:
+        """
+        Retrieve audit logs from Firestore for admin review
+        
+        Args:
+            limit: Maximum number of logs to return (default 100)
+            admin_filter: Filter by admin email (optional)
+            action_filter: Filter by action type (optional)
+            start_date: Only return logs after this date (optional)
+            
+        Returns:
+            list: List of audit log dictionaries, newest first
+        """
+        if not self.is_available:
+            return []
+        
+        try:
+            # Start with base query
+            query = self.db.collection('admin_audit_logs').order_by(
+                'timestamp', direction=firestore.Query.DESCENDING
+            )
+            
+            # Apply filters
+            if admin_filter:
+                query = query.where('admin_email', '==', admin_filter)
+            
+            if action_filter:
+                query = query.where('action', '==', action_filter)
+            
+            if start_date:
+                query = query.where('timestamp', '>=', start_date)
+            
+            # Execute query with limit
+            docs = query.limit(limit).stream()
+            
+            logs = []
+            for doc in docs:
+                log_data = doc.to_dict()
+                log_data['id'] = doc.id  # Include document ID
+                logs.append(log_data)
+            
+            print(f"[AUDIT] Retrieved {len(logs)} audit logs")
+            return logs
+            
+        except Exception as e:
+            print(f"[AUDIT ERROR] Failed to retrieve logs: {e}")
+            return []
     
     def check_rate_limit(self, user_email: str, action_type: str, max_per_minute: int = 10) -> bool:
         """
