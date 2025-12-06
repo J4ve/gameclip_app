@@ -1,6 +1,8 @@
 # 🎮 Video Merger and Uploader
 
-An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube — no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
+An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube: no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
+
+![Demo of features](demo/features.gif)
 
 > **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./Group7_LTSRS.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
 
@@ -280,11 +282,13 @@ For more details on running the app, refer to the [Getting Started Guide](https:
 
 ### Windows
 
-*For less errors:*
+*If errors occur:*
 
 Remember to always delete the build folder when rebuilding the app and run your terminal as an administrator.
 
 Also close file managers or any applications that may be accessing the app directory.
+
+Try restarting your device and disabling your antivirus as a last resort.
 
 (We experienced it the hard way)
 
