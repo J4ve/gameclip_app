@@ -21,7 +21,6 @@ class MainWindow:
         self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
-        print(f"SelectionScreen created: {self.selection_screen}")
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
 
@@ -333,15 +332,17 @@ class MainWindow:
         """Return to login screen after logout"""
         print("Returning to login screen...")
         try:
+            # Clear all overlays and dialogs
             self.page.dialog = None
-        except Exception:
-            pass
-        try:
             self.page.overlay.clear()
-        except Exception:
-            pass
-        # Use Flet's clean() to reset page reliably, then render login UI immediately
-        self.page.clean()
+            self.page.clean()
+        except Exception as ex:
+            print(f"Error clearing page: {ex}")
+        
+        # Small delay to ensure page is clean
+        import time
+        time.sleep(0.1)
+        
         # Show login screen
         def handle_login_complete(user_info, role):
             print(f"Re-login complete: {user_info}, Role: {role.name}")
@@ -353,23 +354,32 @@ class MainWindow:
                 main_layout = new_window.build()
                 self.page.controls = [main_layout]
                 self.page.update()
-                self.page.snack_bar = ft.SnackBar(
+                
+                # Show welcome message
+                snack_bar = ft.SnackBar(
                     content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
                     action="OK"
                 )
-                self.page.snack_bar.open = True
+                self.page.overlay.append(snack_bar)
+                snack_bar.open = True
                 self.page.update()
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
                 self.page.update()
-        login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
-        login_ui = login_screen.build()
-        self.page.controls = [login_ui]
-        self.page.update()
+        
+        try:
+            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+            login_ui = login_screen.build()
+            self.page.controls = [login_ui]
+            self.page.update()
+        except Exception as ex:
+            print(f"Error showing login screen: {ex}")
     
     def _open_settings(self, e):
         """Open settings dialog"""
+        from access_control.roles import RoleType
+        
         def close_settings(e):
             dialog.open = False
             self.page.update()
@@ -379,9 +389,44 @@ class MainWindow:
             self.page.update()
             self._handle_logout(e)
         
-        # Create config tab instance
-        config_tab = ConfigTab(self.page)
+        def on_login_click(e):
+            """Handle login suggestion click from guest config"""
+            try:
+                dialog.open = False
+                self.page.update()
+            except Exception as ex:
+                print(f"Error closing dialog: {ex}")
+            self._return_to_login()
+        
+        # Create config tab instance with callbacks
+        config_tab = ConfigTab(self.page, on_logout_clicked=logout_and_close, on_login_clicked=on_login_click)
         config_content = config_tab.build()
+        
+        # Determine if user is guest to customize dialog actions
+        is_guest = session_manager.is_guest
+        
+        # Build actions list based on user type
+        actions = []
+        if is_guest:
+            actions.append(
+                ft.TextButton(
+                    "Back to Login",
+                    icon=ft.Icons.LOGIN,
+                    on_click=on_login_click,
+                    style=ft.ButtonStyle(color=ft.Colors.BLUE_400)
+                )
+            )
+        else:
+            actions.append(
+                ft.TextButton(
+                    "Logout",
+                    icon=ft.Icons.LOGOUT,
+                    on_click=logout_and_close,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
+                )
+            )
+        
+        actions.append(ft.TextButton("Close", on_click=close_settings))
         
         dialog = ft.AlertDialog(
             modal=True,
@@ -394,15 +439,7 @@ class MainWindow:
                 width=800,
                 height=600,
             ),
-            actions=[
-                ft.TextButton(
-                    "Logout",
-                    icon=ft.Icons.LOGOUT,
-                    on_click=logout_and_close,
-                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
-                ),
-                ft.TextButton("Close", on_click=close_settings),
-            ],
+            actions=actions,
             actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
         

@@ -84,4 +84,5 @@ typing_extensions==4.15.0
 tzdata==2025.2
 uritemplate==4.2.0
 urllib3==1.26.20
+supabase==2.4.3
 watchdog==4.0.2
