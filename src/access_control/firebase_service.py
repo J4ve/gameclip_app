@@ -85,7 +85,7 @@ class FirebaseService:
             user_doc = {
                 'email': user_data.get('email'),
                 'name': user_data.get('name'),
-                'role': user_data.get('role', 'normal'),
+                'role': user_data.get('role', 'free'),
                 'provider': user_data.get('provider', 'google'),
                 'created_at': datetime.now(timezone.utc),
                 'last_login': datetime.now(timezone.utc),
@@ -142,7 +142,7 @@ class FirebaseService:
         try:
             # Query by UID field
             users_ref = self.db.collection('users')
-            query = users_ref.where('uid', '==', uid).limit(1)
+            query = users_ref.where(filter=('uid', '==', uid)).limit(1)
             docs = query.stream()
             
             for doc in docs:
@@ -195,7 +195,7 @@ class FirebaseService:
             else:
                 # Try to find by UID if email document doesn't exist
                 users_ref = self.db.collection('users')
-                query = users_ref.where('uid', '==', uid_or_email).limit(1)
+                query = users_ref.where(filter=('uid', '==', uid_or_email)).limit(1)
                 docs = list(query.stream())
                 
                 if docs:
@@ -274,7 +274,7 @@ class FirebaseService:
             doc_ref = self.db.collection('users').document(email)
             doc_ref.update({
                 'premium_until': premium_until,
-                'role': 'premium' if premium_until > datetime.now(timezone.utc) else 'normal',
+                'role': 'premium' if premium_until > datetime.now(timezone.utc) else 'free',
                 'updated_at': datetime.now(timezone.utc)
             })
             
@@ -304,7 +304,7 @@ class FirebaseService:
                 
                 # Update role if premium expired
                 if not is_premium and user_data.get('role') == 'premium':
-                    self.update_user_role(email, 'normal')
+                    self.update_user_role(email, 'free')
                 
                 return is_premium
             

@@ -11,7 +11,7 @@ from enum import Enum
 class RoleType(Enum):
     """Enumeration of all available roles"""
     GUEST = "guest"
-    NORMAL = "normal"
+    FREE = "free"
     PREMIUM = "premium"
     DEV = "dev"
     ADMIN = "admin"
@@ -43,6 +43,8 @@ class Permission(Enum):
 @dataclass
 class RoleLimits:
     """Defines limits for each role"""
+    # CONFIG_MARKER: Role limits configuration
+    # Set to -1 for unlimited, or positive integer for specific limits
     max_merge_count_per_day: int = -1  # -1 = unlimited
     max_video_length_minutes: int = -1  # -1 = unlimited
     max_file_size_mb: int = -1  # -1 = unlimited
@@ -94,8 +96,10 @@ class GuestRole(Role):
             Permission.MERGE_VIDEOS,
         }
         
+        # CONFIG_MARKER: Guest user limits configuration
+        # To enable daily limits, change max_merge_count_per_day from -1 to desired number (e.g., 5)
         limits = RoleLimits(
-            max_merge_count_per_day=5,
+            max_merge_count_per_day=-1,  # -1 = unlimited (currently no limit)
             max_video_length_minutes=10,
             max_file_size_mb=100,
             watermark_enabled=True,
@@ -110,8 +114,8 @@ class GuestRole(Role):
         )
 
 
-class NormalRole(Role):
-    """Normal logged-in user - can upload but has ads"""
+class FreeRole(Role):
+    """Free tier user - can upload but has ads"""
     
     def __init__(self):
         permissions = {
@@ -120,8 +124,10 @@ class NormalRole(Role):
             Permission.MERGE_VIDEOS,
         }
         
+        # CONFIG_MARKER: Free user limits configuration
+        # To enable daily limits, change max_merge_count_per_day from -1 to desired number (e.g., 20)
         limits = RoleLimits(
-            max_merge_count_per_day=20,
+            max_merge_count_per_day=-1,  # -1 = unlimited (currently no limit)
             max_video_length_minutes=30,
             max_file_size_mb=500,
             watermark_enabled=False,
@@ -129,10 +135,10 @@ class NormalRole(Role):
         )
         
         super().__init__(
-            role_type=RoleType.NORMAL,
+            role_type=RoleType.FREE,
             permissions=permissions,
             limits=limits,
-            description="Normal logged-in user with upload capability but has ads"
+            description="Free tier user with upload capability but has ads"
         )
 
 
@@ -149,6 +155,7 @@ class PremiumRole(Role):
             Permission.UNLIMITED_MERGES,
         }
         
+        # CONFIG_MARKER: Premium user limits configuration (unlimited by design)
         limits = RoleLimits(
             max_merge_count_per_day=-1,  # Unlimited
             max_video_length_minutes=-1,  # Unlimited
@@ -180,6 +187,7 @@ class DevRole(Role):
             Permission.ACCESS_DEBUG_TOOLS,
         }
         
+        # CONFIG_MARKER: Developer role limits configuration (unlimited by design)
         limits = RoleLimits(
             max_merge_count_per_day=-1,
             max_video_length_minutes=-1,
@@ -215,6 +223,7 @@ class AdminRole(Role):
             Permission.VIEW_ANALYTICS,
         }
         
+        # CONFIG_MARKER: Admin role limits configuration (unlimited by design)
         limits = RoleLimits(
             max_merge_count_per_day=-1,
             max_video_length_minutes=-1,
@@ -236,7 +245,7 @@ class RoleManager:
     
     _role_classes = {
         RoleType.GUEST: GuestRole,
-        RoleType.NORMAL: NormalRole,
+        RoleType.FREE: FreeRole,
         RoleType.PREMIUM: PremiumRole,
         RoleType.DEV: DevRole,
         RoleType.ADMIN: AdminRole,
@@ -267,7 +276,7 @@ class RoleManager:
     @classmethod
     def get_role_hierarchy(cls) -> List[RoleType]:
         """Get roles ordered by privilege level (least to most)"""
-        return [RoleType.GUEST, RoleType.NORMAL, RoleType.PREMIUM, RoleType.DEV, RoleType.ADMIN]
+        return [RoleType.GUEST, RoleType.FREE, RoleType.PREMIUM, RoleType.DEV, RoleType.ADMIN]
     
     @classmethod
     def is_role_upgrade(cls, from_role: str, to_role: str) -> bool:
@@ -290,6 +299,6 @@ def get_role(role_name: str) -> Role:
 # Export commonly used items
 __all__ = [
     'Role', 'RoleType', 'Permission', 'RoleLimits',
-    'GuestRole', 'NormalRole', 'PremiumRole', 'DevRole', 'AdminRole',
+    'GuestRole', 'FreeRole', 'PremiumRole', 'DevRole', 'AdminRole',
     'RoleManager', 'get_role'
 ]
