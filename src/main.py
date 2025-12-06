@@ -44,7 +44,6 @@ def main(page: ft.Page):
             # Show welcome message
             snack_bar = ft.SnackBar(
                 content=ft.Text(f"Welcome, {user_info.get('email', 'Guest')}! {'Free tier user' if role.name.lower() == 'free' else f'{role.name.title()} user'}"),
-                action="OK"
             )
             snack_bar.open = True
             page.update()

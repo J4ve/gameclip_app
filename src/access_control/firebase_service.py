@@ -194,7 +194,7 @@ class FirebaseService:
         try:
             # Query by UID field
             users_ref = self.db.collection('users')
-            query = users_ref.where(filter=('uid', '==', uid)).limit(1)
+            query = users_ref.where('uid', '==', uid).limit(1)
             docs = query.stream()
             
             for doc in docs:
@@ -247,7 +247,7 @@ class FirebaseService:
             else:
                 # Try to find by UID if email document doesn't exist
                 users_ref = self.db.collection('users')
-                query = users_ref.where(filter=('uid', '==', uid_or_email)).limit(1)
+                query = users_ref.where('uid', '==', uid_or_email).limit(1)
                 docs = list(query.stream())
                 
                 if docs:
