@@ -5,6 +5,7 @@ Selection Screen - Video selection (Step 1)
 import flet as ft
 from configs.config import Config
 from pathlib import Path
+from app.services.ads_manager import should_show_ads, get_rectangle_ad
 
 
 class SelectionScreen:
@@ -167,24 +168,57 @@ class SelectionScreen:
         self.files_display.visible = has_files
         self.drop_zone_container.visible = not has_files
 
+        # Build main content
+        main_content = ft.Column(
+            [
+                # Header
+                ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD),
+                ft.Text(f"Supported formats: .mp4, .mkv, .mov, .avi, and more…", size=12),
+
+                ft.Container(height=20),  # Spacer
+
+                # Drop zone (hidden when files are selected)
+                self.drop_zone_container,
+
+                # Selected files (replaces drop zone when files exist)
+                self.files_display,
+            ],
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        )
+        
+        # Add ads for guest users (right side)
+        if should_show_ads():
+            ad = get_rectangle_ad()
+            if ad:
+                content_with_ad = ft.Row(
+                    [
+                        ft.Container(
+                            content=main_content,
+                            expand=True,
+                        ),
+                        ft.Container(
+                            content=ft.Column(
+                                [
+                                    ft.Text("Ads", size=10, color=ft.Colors.GREY_500),
+                                    ad,
+                                ],
+                                spacing=5,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            ),
+                            width=320,
+                        ),
+                    ],
+                    spacing=20,
+                    alignment=ft.MainAxisAlignment.CENTER,
+                )
+            else:
+                content_with_ad = main_content
+        else:
+            content_with_ad = main_content
+
         return ft.Container(
-            content=ft.Column(
-                [
-                    # Header
-                    ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD),
-                    ft.Text(f"Supported formats: .mp4, .mkv, .mov, .avi, and more…", size=12),
-
-                    ft.Container(height=20),  # Spacer
-
-                    # Drop zone (hidden when files are selected)
-                    self.drop_zone_container,
-
-                    # Selected files (replaces drop zone when files exist)
-                    self.files_display,
-                ],
-                spacing=10,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            ),
+            content=content_with_ad,
             alignment=ft.alignment.center,
             padding=40,
             expand=True,

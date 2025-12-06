@@ -4,6 +4,7 @@ Arrangement Screen - Video preview & ordering (Step 2)
 
 import flet as ft
 import flet_video
+from app.services.ads_manager import should_show_ads, get_banner_ad
 
 class ArrangementScreen:
     """Second screen: Arrange clips and preview"""
@@ -119,23 +120,32 @@ class ArrangementScreen:
             text_style=ft.TextStyle(color=ft.Colors.WHITE),
         )
         
+        # Build column content
+        column_content: list = [
+            # Header
+            ft.Row([
+                ft.Text("Arrange Videos", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+                ft.Row([
+                    ft.Text("Sort by:", color=ft.Colors.WHITE70, size=14),
+                    arrange_by_dropdown,
+                ]),
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            
+            # Main content
+            ft.Row([
+                video_list_panel,
+                video_preview_panel,
+            ], expand=True, spacing=10),
+        ]
+        
+        # Add ad banner for guests at top
+        if should_show_ads():
+            ad_banner = get_banner_ad()
+            if ad_banner is not None:
+                column_content.insert(0, ad_banner)
+        
         return ft.Container(
-            content=ft.Column([
-                # Header
-                ft.Row([
-                    ft.Text("Arrange Videos", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                    ft.Row([
-                        ft.Text("Sort by:", color=ft.Colors.WHITE70, size=14),
-                        arrange_by_dropdown,
-                    ]),
-                ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-                
-                # Main content
-                ft.Row([
-                    video_list_panel,
-                    video_preview_panel,
-                ], expand=True, spacing=10),
-            ], spacing=15, expand=True),
+            content=ft.Column(column_content, spacing=15, expand=True),
             padding=20,
             expand=True,
         )

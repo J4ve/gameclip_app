@@ -96,8 +96,8 @@ class MainWindow:
     def setup_page(self):
         """Configure page settings"""
         self.page.title = Config.APP_TITLE
-        self.page.window_width = Config.APP_WIDTH
-        self.page.window_height = Config.APP_HEIGHT
+        self.page.window.width = Config.APP_WIDTH
+        self.page.window.height = Config.APP_HEIGHT
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0

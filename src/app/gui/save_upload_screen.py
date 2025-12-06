@@ -9,9 +9,11 @@ from pathlib import Path
 import sys
 import os
 from access_control.session import session_manager
+from app.services.ads_manager import should_show_ads, get_banner_ad
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
+
 
 
 class SaveUploadScreen:
@@ -304,17 +306,43 @@ class SaveUploadScreen:
             else:
                 upload_status_text = "⚠️ Your account does not have upload permissions."
         
-        upload_settings_section = ft.Column([
+        # Build upload settings section - hide form fields for guests
+        upload_section_controls = [
             ft.Text("Upload Settings", size=16, weight=ft.FontWeight.BOLD),
             ft.Text("Configure metadata for YouTube upload", size=12, color=ft.Colors.GREY_400),
             ft.Text(upload_status_text, size=11, color=ft.Colors.ORANGE_400, visible=not upload_enabled),
-            ft.ElevatedButton(
-                "Edit Upload Settings",
-                icon=ft.Icons.EDIT,
-                on_click=self._open_upload_settings_dialog,
-                disabled=not upload_enabled
-            ),
-        ], spacing=10)
+        ]
+        
+        # Only show upload form fields if user can upload
+        if upload_enabled:
+            upload_section_controls.extend([
+                ft.ElevatedButton(
+                    "Edit Upload Settings",
+                    icon=ft.Icons.EDIT,
+                    on_click=self._open_upload_settings_dialog,
+                    disabled=not upload_enabled
+                ),
+            ])
+        else:
+            # Show a message for guests instead
+            upload_section_controls.append(
+                ft.Container(
+                    content=ft.Column([
+                        ft.Icon(ft.Icons.LOCK, size=32, color=ft.Colors.ORANGE_400),
+                        ft.Text(
+                            "Create a free account and sign in to enable YouTube uploads.",
+                            size=12,
+                            color=ft.Colors.GREY_400,
+                            text_align=ft.TextAlign.CENTER
+                        ),
+                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
+                    padding=15,
+                    border_radius=8,
+                    bgcolor=ft.Colors.with_opacity(0.1, "#FF9800"),
+                )
+            )
+        
+        upload_settings_section = ft.Column(upload_section_controls, spacing=10)
 
         # Progress section
         self.progress_bar = ft.ProgressBar(
@@ -340,24 +368,33 @@ class SaveUploadScreen:
         # Buttons section - with role-based restrictions
         save_enabled = session_manager.can_save()
         upload_enabled = session_manager.can_upload()
+        is_guest = session_manager.is_guest
         
         # Add watermark warning for guests
         watermark_warning = ""
         if session_manager.has_watermark():
             watermark_warning = "⚠️ Guest videos include watermark"
         
+        # Determine save button text and tooltip
+        save_button_text = "Save Video"
+        save_button_tooltip = "Save merged video locally"
+        if is_guest:
+            save_button_tooltip = "Save merged video locally (guest users)"
+        
         self.save_button = ft.ElevatedButton(
-            "Save Video",
+            save_button_text,
             icon=ft.Icons.SAVE,
             bgcolor=ft.Colors.with_opacity(0.85, "#00897B"),
             color=ft.Colors.WHITE,
             on_click=self._handle_save,
             height=45,
             width=150,
-            disabled=not save_enabled
+            disabled=not save_enabled,
+            tooltip=save_button_tooltip,
         )
         
         upload_button_text = "Save & Upload" if upload_enabled else "Upload Disabled"
+        upload_button_tooltip = "Save and upload to YouTube" if upload_enabled else "Upgrade to upload videos"
         self.upload_button = ft.ElevatedButton(
             upload_button_text,
             icon=ft.Icons.UPLOAD if upload_enabled else ft.Icons.LOCK,
@@ -366,7 +403,8 @@ class SaveUploadScreen:
             on_click=self._handle_upload,
             height=45,
             width=150,
-            disabled=not upload_enabled
+            disabled=not upload_enabled,
+            tooltip=upload_button_tooltip,
         )
         
         self.cancel_button = ft.ElevatedButton(
@@ -382,14 +420,37 @@ class SaveUploadScreen:
         
         # Role info section
         role_display = self._get_role_display_text(session_manager.role_name)
-        role_info = ft.Column([
+        role_color = ft.Colors.ORANGE_400 if session_manager.is_guest else ft.Colors.CYAN_400
+        
+        role_info_controls = [
             ft.Text(
                 role_display,
                 size=12,
-                color=ft.Colors.CYAN_400
+                weight=ft.FontWeight.W_500,
+                color=role_color
             ),
-            ft.Text(watermark_warning, size=10, color=ft.Colors.ORANGE_400, visible=bool(watermark_warning)),
-        ], spacing=2)
+        ]
+        
+        # Add guest-specific info
+        if session_manager.is_guest:
+            role_info_controls.append(
+                ft.Text(
+                    "Limited to local saves only",
+                    size=10,
+                    color=ft.Colors.GREY_500,
+                )
+            )
+        
+        if session_manager.has_watermark():
+            role_info_controls.append(
+                ft.Text(
+                    "⚠️ Guest videos include watermark",
+                    size=10,
+                    color=ft.Colors.ORANGE_400,
+                )
+            )
+        
+        role_info = ft.Column(role_info_controls, spacing=2)
         
         buttons_section = ft.Column([
             role_info,
@@ -457,49 +518,57 @@ class SaveUploadScreen:
                 margin=ft.margin.only(bottom=10)
             )
 
-        # Main layout with optional ad banner
-        main_content = ft.Column([
-            # Add ad banner if user should see ads
-            *([ad_banner] if ad_banner else []),
-            ft.Row([
-                # Left column: Video list and preview
-                ft.Container(
-                    content=ft.Column([
-                        ft.Text("Selected Videos", size=16, weight=ft.FontWeight.BOLD),
-                        ft.Container(
-                            content=ft.Column(video_list_controls, scroll=ft.ScrollMode.AUTO),
-                            height=video_list_height,
-                            bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
-                            border_radius=8,
-                            padding=8,
-                        ),
-                        ft.Container(height=10),
-                        ft.Text("Preview", size=16, weight=ft.FontWeight.BOLD),
-                        self.preview_container,
-                    ], expand=True, spacing=10),
-                    expand=1,
-                    padding=15,
-                ),
+        # Main layout - build content list
+        main_content_items: list = [
+            ft.Column([
+                ft.Row([
+                    # Left column: Video list and preview
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Text("Videos to Merge", size=16, weight=ft.FontWeight.BOLD),
+                            ft.Container(
+                                content=ft.Column(video_list_controls, scroll=ft.ScrollMode.AUTO),
+                                height=video_list_height,
+                                bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
+                                border_radius=8,
+                                padding=8,
+                            ),
+                            ft.Container(height=10),  # Spacer
+                            ft.Text("Preview", size=16, weight=ft.FontWeight.BOLD),
+                            self.preview_container,
+                        ], expand=True, spacing=10),
+                        expand=1,
+                        padding=15,
+                    ),
 
-                # Right column: Settings and actions
-                ft.Container(
-                    content=ft.Column([
-                        save_settings_section,
-                        ft.Divider(height=20),
-                        upload_settings_section,
-                        ft.Divider(height=20),
-                        progress_section,
-                        buttons_section,
-                    ], scroll=ft.ScrollMode.AUTO, spacing=15),
-                    expand=2,
-                    padding=20,
-                    bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
-                    border_radius=10,
-                ),
-            ], expand=True, spacing=15),
-        ], expand=True, spacing=0)
+                    # Right column: Settings and actions
+                    ft.Container(
+                        content=ft.Column([
+                            save_settings_section,
+                            ft.Divider(height=20),
+                            upload_settings_section,
+                            ft.Divider(height=20),
+                            progress_section,
+                            buttons_section,
+                        ], scroll=ft.ScrollMode.AUTO, spacing=15),
+                        expand=2,
+                        padding=20,
+                        bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+                        border_radius=10,
+                    ),
+                ], expand=True, spacing=15),
+            ], expand=True, spacing=0)
+        ]
+        
+        # Add ad banner for guests at top
+        if should_show_ads():
+            ad_banner = get_banner_ad()
+            if ad_banner is not None:
+                main_content_items.insert(0, ad_banner)
+        
+        main_content = ft.Column(main_content_items, expand=True, spacing=15)
 
-        # Main layout
+        # Return main layout
         return ft.Container(
             content=main_content,
             padding=20,
@@ -706,13 +775,42 @@ class SaveUploadScreen:
     
     def _open_upload_settings_dialog(self, e):
         """Open dialog to edit upload settings"""
+        
+        # Define description presets
+        presets = {
+            "Professional": "Check out this merged video! Perfect for sharing with friends and family.",
+            "Gaming": "Epic gaming moments compilation! Don't forget to like and subscribe for more content.",
+            "Tutorial": "Step-by-step tutorial on how to merge and edit videos. Follow along and create amazing content!",
+            "Vlog": "Vlog update! Hope you enjoyed this video. Let me know what you think in the comments.",
+            "Music": "Original music video/compilation. Enjoy the beats!",
+            "Custom": "",
+        }
+        
+        # Create preset dropdown
+        preset_dropdown = ft.Dropdown(
+            label="Description Presets",
+            options=[ft.dropdown.Option(key) for key in presets.keys()],
+            value="Professional",
+            width=200,
+            on_change=lambda event: self._apply_preset(presets, event),
+        )
+        
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Upload Settings"),
             content=ft.Column([
                 ft.Text("Video Metadata", weight=ft.FontWeight.BOLD, size=14),
                 self.title_field,
+                
+                ft.Divider(height=10),
+                ft.Text("Description", weight=ft.FontWeight.BOLD, size=12),
+                ft.Column([
+                    ft.Text("Quick Templates:", size=11, color=ft.Colors.GREY_500),
+                    preset_dropdown,
+                ], spacing=5),
                 self.description_field,
+                
+                ft.Divider(height=10),
                 self.tags_field,
                 self.visibility_dropdown,
                 
@@ -730,6 +828,13 @@ class SaveUploadScreen:
         self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()
+    
+    def _apply_preset(self, presets: dict, event):
+        """Apply a description preset"""
+        selected_preset = event.control.value
+        if selected_preset and selected_preset in presets:
+            self.description_field.value = presets[selected_preset]
+            self.page.update()
     
     def _close_dialog(self, dialog):
         """Close a dialog"""
