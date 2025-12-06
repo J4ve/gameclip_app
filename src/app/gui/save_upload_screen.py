@@ -461,8 +461,9 @@ class SaveUploadScreen:
         main_content = ft.Column([
             # Add ad banner if user should see ads
             *([ad_banner] if ad_banner else []),
+            
             ft.Row([
-                # Left column: Video list and preview
+                # Left column: Videos list on top, Preview on bottom
                 ft.Container(
                     content=ft.Column([
                         ft.Text("Selected Videos", size=16, weight=ft.FontWeight.BOLD),
@@ -491,7 +492,7 @@ class SaveUploadScreen:
                         progress_section,
                         buttons_section,
                     ], scroll=ft.ScrollMode.AUTO, spacing=15),
-                    expand=2,
+                    expand=1,
                     padding=20,
                     bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
                     border_radius=10,

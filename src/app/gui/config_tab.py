@@ -278,6 +278,24 @@ class ConfigTab:
         user_info = session_manager.get_user_display_info()
         user_name = user_info.get('name', 'Not logged in')
         user_role = user_info.get('role', 'None')
+        user_picture_url = user_info.get('picture', '')
+        is_guest = session_manager.is_guest
+        
+        # Profile image or icon
+        if user_picture_url and not is_guest:
+            # Authenticated user with profile picture
+            profile_image = ft.CircleAvatar(
+                foreground_image_src=user_picture_url,
+                radius=24,
+                bgcolor=ft.Colors.BLUE_700
+            )
+        else:
+            # Guest user or no picture - use icon only for guests
+            profile_image = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=28, color=ft.Colors.WHITE),
+                radius=24,
+                bgcolor=ft.Colors.GREY_700
+            )
         
         # Role permissions display
         permissions = []
@@ -299,7 +317,7 @@ class ConfigTab:
             content=ft.Column([
                 ft.Text("Account Information", size=18, weight=ft.FontWeight.BOLD),
                 ft.Row([
-                    ft.Icon(ft.Icons.ACCOUNT_CIRCLE, color=ft.Colors.BLUE_400),
+                    profile_image,
                     ft.Column([
                         ft.Text(f"User: {user_name}", size=14),
                         ft.Text(f"Role: {user_role}", size=12, color=ft.Colors.GREY_400),

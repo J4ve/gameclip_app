@@ -2,14 +2,15 @@ import flet as ft
 from app.gui import MainWindow
 from app.gui.login_screen import LoginScreen
 from access_control.session import session_manager
+from configs.config import Config
 
 
 def main(page: ft.Page):
     """Main application entry point with authentication"""
-    page.title = "Video Merger App"
+    page.title = Config.APP_TITLE
     page.theme_mode = ft.ThemeMode.DARK
-    page.window.width = 1200
-    page.window.height = 950
+    page.window.width = Config.APP_WIDTH
+    page.window.height = Config.APP_HEIGHT
     page.window.min_width = 800
     page.window.min_height = 600
     
