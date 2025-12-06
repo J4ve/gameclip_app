@@ -310,7 +310,6 @@ class ConfigTab:
             options=[
                 ft.dropdown.Option("free", "Free"),
                 ft.dropdown.Option("premium", "Premium"),
-                ft.dropdown.Option("dev", "Developer"),
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value="free",
@@ -355,7 +354,6 @@ class ConfigTab:
                 ft.dropdown.Option("all", "All Roles"),
                 ft.dropdown.Option("free", "Free"),
                 ft.dropdown.Option("premium", "Premium"),
-                ft.dropdown.Option("dev", "Developer"),
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value="all",
@@ -1070,24 +1068,26 @@ class ConfigTab:
         # Check if this is the super admin
         is_super_admin = (email == Config.SUPER_ADMIN_EMAIL)
         
+        # Check if this is the current user (prevent self-editing)
+        is_current_user = (email == session_manager.email)
+        
         # Action buttons
         role_button = ft.PopupMenuButton(
             icon=ft.Icons.ADMIN_PANEL_SETTINGS,
-            tooltip="Change Role" if not is_super_admin else "Super Admin - Role cannot be changed",
+            tooltip="Change Role" if not (is_super_admin or is_current_user) else ("Super Admin - Role cannot be changed" if is_super_admin else "Cannot change your own role"),
             items=[
                 ft.PopupMenuItem(text="Free", on_click=lambda e, u=user: self._admin_change_role(u, "free")),
                 ft.PopupMenuItem(text="Premium", on_click=lambda e, u=user: self._admin_change_role(u, "premium")),
-                ft.PopupMenuItem(text="Developer", on_click=lambda e, u=user: self._admin_change_role(u, "dev")),
                 ft.PopupMenuItem(text="Admin", on_click=lambda e, u=user: self._admin_change_role(u, "admin")),
             ],
-            disabled=is_super_admin
+            disabled=(is_super_admin or is_current_user)
         )
         
         delete_button = ft.IconButton(
             icon=ft.Icons.DELETE_FOREVER,
-            tooltip="Delete User" if not is_super_admin else "Super Admin - Cannot be deleted",
+            tooltip="Delete User" if not (is_super_admin or is_current_user) else ("Super Admin - Cannot be deleted" if is_super_admin else "Cannot delete your own account"),
             on_click=lambda e, u=user: self._admin_delete_user(u),
-            disabled=is_super_admin
+            disabled=(is_super_admin or is_current_user)
         )
         
         # Name display with super admin badge
@@ -1132,7 +1132,6 @@ class ConfigTab:
             'guest': ft.Colors.GREY_700,
             'free': ft.Colors.BLUE_700,
             'premium': ft.Colors.PURPLE_700,
-            'dev': ft.Colors.ORANGE_700,
             'admin': ft.Colors.RED_700,
         }
         return colors.get(role.lower(), ft.Colors.GREY_700)
@@ -1144,6 +1143,7 @@ class ConfigTab:
         email = user.get('email')
         current_role = user.get('role')
         
+        # Double-check: prevent self-editing
         if email == session_manager.email:
             self._show_error("Cannot change your own role")
             return
@@ -1204,6 +1204,7 @@ class ConfigTab:
         """Delete user directly"""
         email = user.get('email')
         
+        # Double-check: prevent self-deletion
         if email == session_manager.email:
             self._show_error("Cannot delete your own account")
             return

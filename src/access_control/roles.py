@@ -13,7 +13,6 @@ class RoleType(Enum):
     GUEST = "guest"
     FREE = "free"
     PREMIUM = "premium"
-    DEV = "dev"
     ADMIN = "admin"
 
 
@@ -28,10 +27,6 @@ class Permission(Enum):
     NO_WATERMARK = "no_watermark"
     NO_ADS = "no_ads"
     UNLIMITED_MERGES = "unlimited_merges"
-    
-    # Advanced permissions
-    VIEW_LOGS = "view_logs"
-    ACCESS_DEBUG_TOOLS = "access_debug_tools"
     
     # Admin permissions
     MANAGE_USERS = "manage_users"
@@ -172,38 +167,6 @@ class PremiumRole(Role):
         )
 
 
-class DevRole(Role):
-    """Developer role - premium features plus debugging tools"""
-    
-    def __init__(self):
-        permissions = {
-            Permission.SAVE_VIDEO,
-            Permission.UPLOAD_VIDEO,
-            Permission.MERGE_VIDEOS,
-            Permission.NO_WATERMARK,
-            Permission.NO_ADS,
-            Permission.UNLIMITED_MERGES,
-            Permission.VIEW_LOGS,
-            Permission.ACCESS_DEBUG_TOOLS,
-        }
-        
-        # CONFIG_MARKER: Developer role limits configuration (unlimited by design)
-        limits = RoleLimits(
-            max_merge_count_per_day=-1,
-            max_video_length_minutes=-1,
-            max_file_size_mb=-1,
-            watermark_enabled=False,
-            ads_enabled=False
-        )
-        
-        super().__init__(
-            role_type=RoleType.DEV,
-            permissions=permissions,
-            limits=limits,
-            description="Developer with debug tools and logs access"
-        )
-
-
 class AdminRole(Role):
     """Admin role - all permissions including user management"""
     
@@ -215,8 +178,6 @@ class AdminRole(Role):
             Permission.NO_WATERMARK,
             Permission.NO_ADS,
             Permission.UNLIMITED_MERGES,
-            Permission.VIEW_LOGS,
-            Permission.ACCESS_DEBUG_TOOLS,
             Permission.MANAGE_USERS,
             Permission.CHANGE_ROLES,
             Permission.BAN_USERS,
@@ -247,7 +208,6 @@ class RoleManager:
         RoleType.GUEST: GuestRole,
         RoleType.FREE: FreeRole,
         RoleType.PREMIUM: PremiumRole,
-        RoleType.DEV: DevRole,
         RoleType.ADMIN: AdminRole,
     }
     
@@ -276,7 +236,7 @@ class RoleManager:
     @classmethod
     def get_role_hierarchy(cls) -> List[RoleType]:
         """Get roles ordered by privilege level (least to most)"""
-        return [RoleType.GUEST, RoleType.FREE, RoleType.PREMIUM, RoleType.DEV, RoleType.ADMIN]
+        return [RoleType.GUEST, RoleType.FREE, RoleType.PREMIUM, RoleType.ADMIN]
     
     @classmethod
     def is_role_upgrade(cls, from_role: str, to_role: str) -> bool:
@@ -299,6 +259,6 @@ def get_role(role_name: str) -> Role:
 # Export commonly used items
 __all__ = [
     'Role', 'RoleType', 'Permission', 'RoleLimits',
-    'GuestRole', 'FreeRole', 'PremiumRole', 'DevRole', 'AdminRole',
+    'GuestRole', 'FreeRole', 'PremiumRole', 'AdminRole',
     'RoleManager', 'get_role'
 ]

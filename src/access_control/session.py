@@ -294,10 +294,6 @@ class SessionManager:
         """Check if user is admin"""
         return bool(self._current_role and self._current_role.role_type == RoleType.ADMIN)
     
-    def is_dev(self) -> bool:
-        """Check if user is developer"""
-        return bool(self._current_role and self._current_role.role_type == RoleType.DEV)
-    
     def is_premium(self) -> bool:
         """Check if user is premium"""
         return bool(self._current_role and self._current_role.role_type == RoleType.PREMIUM)
@@ -342,8 +338,6 @@ class SessionManager:
             role_display = 'Guest'
         elif self._current_role.name.lower() == 'premium':
             role_display = 'Premium'
-        elif self._current_role.name.lower() == 'dev':
-            role_display = 'Developer'
         elif self._current_role.name.lower() == 'admin':
             role_display = 'Administrator'
         

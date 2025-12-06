@@ -12,6 +12,9 @@ from .config_tab import ConfigTab
 from .admin_dashboard import AdminDashboardScreen
 from access_control.session import session_manager
 from access_control.roles import Permission
+import sys
+import platform
+from datetime import datetime
 
 
 class MainWindow:
@@ -462,8 +465,8 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=800,
-                height=600,
+                width=900,
+                height=650,
             ),
             actions=actions,
             actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,

@@ -82,8 +82,6 @@ class SaveUploadScreen:
             return "Guest user"
         elif role_lower == 'premium':
             return "Premium user"
-        elif role_lower == 'dev':
-            return "Developer account"
         elif role_lower == 'admin':
             return "Administrator account"
         else:

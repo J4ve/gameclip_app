@@ -91,7 +91,6 @@ class AdminDashboardScreen:
             options=[
                 ft.dropdown.Option("free", "Free"),
                 ft.dropdown.Option("premium", "Premium"),
-                ft.dropdown.Option("dev", "Developer"),
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value="free",
@@ -137,7 +136,6 @@ class AdminDashboardScreen:
                 ft.dropdown.Option("guest", "Guest"),
                 ft.dropdown.Option("free", "Free"),
                 ft.dropdown.Option("premium", "Premium"),
-                ft.dropdown.Option("dev", "Developer"),
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value="all",
@@ -310,7 +308,6 @@ class AdminDashboardScreen:
                 ft.PopupMenuItem(text="Guest", on_click=lambda e, u=user: self._change_role(u, "guest")),
                 ft.PopupMenuItem(text="Free", on_click=lambda e, u=user: self._change_role(u, "free")),
                 ft.PopupMenuItem(text="Premium", on_click=lambda e, u=user: self._change_role(u, "premium")),
-                ft.PopupMenuItem(text="Developer", on_click=lambda e, u=user: self._change_role(u, "dev")),
                 ft.PopupMenuItem(text="Admin", on_click=lambda e, u=user: self._change_role(u, "admin")),
             ],
             disabled=is_super_admin
@@ -374,7 +371,6 @@ class AdminDashboardScreen:
             'guest': ft.Colors.GREY_700,
             'free': ft.Colors.BLUE_700,
             'premium': ft.Colors.PURPLE_700,
-            'dev': ft.Colors.ORANGE_700,
             'admin': ft.Colors.RED_700,
         }
         return colors.get(role.lower(), ft.Colors.GREY_700)

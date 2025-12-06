@@ -120,7 +120,7 @@ class FirebaseService:
         
         Args:
             email: User's email address
-            role: Role to assign (free, premium, dev, admin)
+            role: Role to assign (free, premium, admin)
             
         Returns:
             bool: True if successful, False otherwise
