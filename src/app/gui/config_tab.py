@@ -87,6 +87,22 @@ class ConfigTab:
             expand=True
         )
     
+    def _get_role_display_text(self, role: str) -> str:
+        """Get user-friendly role display text"""
+        role_lower = role.lower()
+        if role_lower == 'free':
+            return "Free tier user"
+        elif role_lower == 'guest':
+            return "Guest user"
+        elif role_lower == 'premium':
+            return "Premium user"
+        elif role_lower == 'developer':
+            return "Developer account"
+        elif role_lower == 'administrator':
+            return "Administrator account"
+        else:
+            return f"{role} user"
+    
     def _build_account_section(self):
         """Build account information section with profile picture"""
         user_info = session_manager.get_user_display_info()
@@ -134,7 +150,7 @@ class ConfigTab:
                         ft.Text(f"{user_name}", size=16, weight=ft.FontWeight.BOLD),
                         ft.Text(f"{user_email}", size=12, color=ft.Colors.GREY_400),
                         ft.Text(
-                            f"{'Free tier user' if user_role.lower() == 'free' else f'Role: {user_role.title()}'}",
+                            self._get_role_display_text(user_role),
                             size=12,
                             color=ft.Colors.BLUE_400
                         ),

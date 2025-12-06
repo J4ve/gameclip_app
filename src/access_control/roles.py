@@ -301,5 +301,4 @@ __all__ = [
     'Role', 'RoleType', 'Permission', 'RoleLimits',
     'GuestRole', 'FreeRole', 'PremiumRole', 'DevRole', 'AdminRole',
     'RoleManager', 'get_role'
-    'FreeRole',
 ]

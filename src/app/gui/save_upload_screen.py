@@ -73,6 +73,22 @@ class SaveUploadScreen:
             size=12,
         )
 
+    def _get_role_display_text(self, role_name: str) -> str:
+        """Get user-friendly role display text"""
+        role_lower = role_name.lower()
+        if role_lower == 'free':
+            return "Free tier user"
+        elif role_lower == 'guest':
+            return "Guest user"
+        elif role_lower == 'premium':
+            return "Premium user"
+        elif role_lower == 'dev':
+            return "Developer account"
+        elif role_lower == 'admin':
+            return "Administrator account"
+        else:
+            return f"{role_name.title()} user"
+
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
@@ -365,9 +381,10 @@ class SaveUploadScreen:
         )
         
         # Role info section
+        role_display = self._get_role_display_text(session_manager.role_name)
         role_info = ft.Column([
             ft.Text(
-                f"{'Free tier user' if session_manager.role_name.lower() == 'free' else f'Role: {session_manager.role_name.title()}'}",
+                role_display,
                 size=12,
                 color=ft.Colors.CYAN_400
             ),

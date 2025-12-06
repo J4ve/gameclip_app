@@ -318,10 +318,23 @@ class SessionManager:
             except Exception as e:
                 print(f"Could not fetch picture from Firebase: {e}")
         
+        # Format role display based on role type
+        role_display = self._current_role.name.title()
+        if self._current_role.name.lower() == 'free':
+            role_display = 'Free'
+        elif self._current_role.name.lower() == 'guest':
+            role_display = 'Guest'
+        elif self._current_role.name.lower() == 'premium':
+            role_display = 'Premium'
+        elif self._current_role.name.lower() == 'dev':
+            role_display = 'Developer'
+        elif self._current_role.name.lower() == 'admin':
+            role_display = 'Administrator'
+        
         return {
             'email': self._current_user.get('email', 'Unknown'),
             'name': self._current_user.get('name', 'Unknown'),
-            'role': self._current_role.name.title(),
+            'role': role_display,
             'status': status,
             'permissions': f"{len(self._current_role.permissions)} permissions",
             'picture': picture_url

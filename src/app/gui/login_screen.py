@@ -68,7 +68,6 @@ class LoginScreen:
         # Guest text button
         self.guest_button = ft.TextButton(
             "Or continue without signing in",
-            icon=ft.Icons.PERSON_OUTLINE,
             on_click=self._handle_guest_login,
             style=ft.ButtonStyle(
                 color=ft.Colors.GREY_400,
@@ -91,7 +90,7 @@ class LoginScreen:
                 ft.Text("Welcome", size=24, weight=ft.FontWeight.BOLD),
                 ft.Container(height=5),
                 ft.Text(
-                    "Sign in to upload to YouTube, access premium features,\nand unlock role-based capabilities",
+                    "Sign in to upload to YouTube",
                     size=12,
                     color=ft.Colors.GREY_500,
                     text_align=ft.TextAlign.CENTER
