@@ -8,10 +8,10 @@ def main(page: ft.Page):
     """Main application entry point with authentication"""
     page.title = "Video Merger App"
     page.theme_mode = ft.ThemeMode.DARK
-    page.window_width = 1200
-    page.window_height = 950
-    page.window_min_width = 800
-    page.window_min_height = 600
+    page.window.width = 1200
+    page.window.height = 950
+    page.window.min_width = 800
+    page.window.min_height = 600
     
     # Handle login completion and show main app
     def handle_login_complete(user_info, role):
