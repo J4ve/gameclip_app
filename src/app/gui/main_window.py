@@ -96,8 +96,8 @@ class MainWindow:
     def setup_page(self):
         """Configure page settings"""
         self.page.title = Config.APP_TITLE
-        self.page.window_width = Config.APP_WIDTH
-        self.page.window_height = Config.APP_HEIGHT
+        self.page.window.width = Config.APP_WIDTH
+        self.page.window.height = Config.APP_HEIGHT
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0
@@ -192,18 +192,19 @@ class MainWindow:
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
         
-        # Profile button with user photo and name
+        # Profile button with user photo and name - only show profile image for authenticated users
         user_picture_url = user_info.get('picture', '')
+        is_guest = session_manager.is_guest
         
-        if user_picture_url:
-            # User has profile picture (Google OAuth)
+        if user_picture_url and not is_guest:
+            # Authenticated user with profile picture - show image only
             profile_image = ft.CircleAvatar(
                 foreground_image_src=user_picture_url,
                 radius=16,
                 bgcolor=ft.Colors.BLUE_700
             )
         else:
-            # Guest or no picture - use icon
+            # Guest user or no picture - use icon only for guests
             profile_image = ft.CircleAvatar(
                 content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
                 radius=16,
@@ -357,8 +358,7 @@ class MainWindow:
                 
                 # Show welcome message
                 snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
-                    action="OK"
+                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!")
                 )
                 self.page.overlay.append(snack_bar)
                 snack_bar.open = True

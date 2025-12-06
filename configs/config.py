@@ -7,7 +7,7 @@ class Config:
 
     APP_TITLE = "Video Merger"
     APP_WIDTH = 1200
-    APP_HEIGHT = 900
+    APP_HEIGHT = 700
 
     DEFAULT_OUTPUT_FORMAT = "merged_video" #placeholder muna, sa program na madagdag ng ".mp4" saka date
 
