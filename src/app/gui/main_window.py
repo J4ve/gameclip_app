@@ -209,6 +209,7 @@ class MainWindow:
             # Authenticated user with profile picture - show image only
             profile_image = ft.CircleAvatar(
                 foreground_image_src=user_picture_url,
+                content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),  # Loading/fallback icon
                 radius=16,
                 bgcolor=ft.Colors.BLUE_700
             )

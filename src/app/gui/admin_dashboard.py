@@ -147,21 +147,37 @@ class AdminDashboardScreen:
             "Refresh",
             icon=ft.Icons.REFRESH,
             on_click=self._refresh_users,
-            bgcolor=ft.Colors.BLUE_700
+            bgcolor=ft.Colors.BLUE_700,
+            color=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.Colors.BLUE_700,
+                    ft.ControlState.HOVERED: ft.Colors.BLUE_600,
+                },
+            )
         )
         
-        # Loading indicator
-        self.loading_indicator = ft.ProgressRing(visible=False)
+        # Loading indicator - wrapped in container to prevent layout shift
+        self.loading_indicator = ft.ProgressRing(visible=False, width=20, height=20)
+        self.loading_container = ft.Container(
+            content=self.loading_indicator,
+            width=50,  # Fixed width to prevent shifting
+            alignment=ft.alignment.center
+        )
         
-        # Users table header
-        table_header = ft.Row([
-            ft.Text("Email", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Name", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Role", weight=ft.FontWeight.BOLD, expand=1),
-            ft.Text("Last Login", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Status", weight=ft.FontWeight.BOLD, expand=1),
-            ft.Text("Actions", weight=ft.FontWeight.BOLD, expand=2),
-        ], spacing=10)
+        # Users table header with fixed widths to match row layout
+        table_header = ft.Container(
+            content=ft.Row([
+                ft.Container(width=50),  # Avatar space
+                ft.Container(ft.Text("Email", weight=ft.FontWeight.BOLD, size=12), width=200),
+                ft.Container(ft.Text("Name", weight=ft.FontWeight.BOLD, size=12), width=200),
+                ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), width=100),
+                ft.Container(ft.Text("Last Login", weight=ft.FontWeight.BOLD, size=12), width=150),
+                ft.Container(ft.Text("Status", weight=ft.FontWeight.BOLD, size=12), width=80),
+                ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=150),
+            ], spacing=10),
+            padding=ft.padding.only(left=10, right=10)
+        )
         
         # Users table content (will be populated dynamically)
         self.users_table = ft.Column(
@@ -186,7 +202,7 @@ class AdminDashboardScreen:
                     self.search_field,
                     self.filter_dropdown,
                     self.refresh_button,
-                    self.loading_indicator,
+                    self.loading_container,
                 ], spacing=10),
                 
                 ft.Divider(),
@@ -197,10 +213,6 @@ class AdminDashboardScreen:
                 
                 # Users list
                 self.users_table,
-                
-                # TODO: Add pagination controls
-                # TODO: Add bulk actions (export, bulk role change)
-                # TODO: Add statistics summary (total users, by role, active today)
                 
             ], spacing=15, expand=True),
             padding=20,
@@ -281,6 +293,7 @@ class AdminDashboardScreen:
         name = user.get('name', 'N/A')
         role = user.get('role', 'unknown')
         last_login = user.get('last_login', 'Never')
+        picture_url = user.get('picture', '')
         
         # Format last login
         if isinstance(last_login, datetime):
@@ -299,6 +312,20 @@ class AdminDashboardScreen:
         
         # Check if this is the super admin
         is_super_admin = (email == Config.SUPER_ADMIN_EMAIL)
+        
+        # Create user avatar with loading state
+        if picture_url:
+            user_avatar = ft.CircleAvatar(
+                foreground_image_src=picture_url,
+                content=ft.Icon(ft.Icons.PERSON, size=20),  # Fallback/loading icon
+                radius=20,
+            )
+        else:
+            user_avatar = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.PERSON, size=20),
+                bgcolor=ft.Colors.BLUE_GREY_700,
+                radius=20,
+            )
         
         # Action buttons (disabled for super admin)
         role_button = ft.PopupMenuButton(
@@ -346,18 +373,21 @@ class AdminDashboardScreen:
         
         return ft.Container(
             content=ft.Row([
-                ft.Text(email, expand=2, size=12),
-                ft.Container(content=name_display, expand=2),
+                ft.Container(user_avatar, width=50),
+                ft.Container(ft.Text(email, size=12, overflow=ft.TextOverflow.ELLIPSIS), width=200),
+                ft.Container(name_display, width=200),
                 ft.Container(
-                    content=ft.Text(role.title(), size=11, weight=ft.FontWeight.BOLD),
-                    bgcolor=self._get_role_color(role),
-                    padding=5,
-                    border_radius=5,
-                    expand=1
+                    ft.Container(
+                        content=ft.Text(role.title(), size=11, weight=ft.FontWeight.BOLD),
+                        bgcolor=self._get_role_color(role),
+                        padding=5,
+                        border_radius=5,
+                    ),
+                    width=100
                 ),
-                ft.Text(str(last_login), expand=2, size=11, color=ft.Colors.GREY_400),
-                ft.Text(status_text, expand=1, size=11, color=status_color),
-                ft.Row([role_button, disable_button, delete_button], expand=2, spacing=5),
+                ft.Container(ft.Text(str(last_login), size=11, color=ft.Colors.GREY_400, overflow=ft.TextOverflow.ELLIPSIS), width=150),
+                ft.Container(ft.Text(status_text, size=11, color=status_color), width=80),
+                ft.Container(ft.Row([role_button, disable_button, delete_button], spacing=5), width=150),
             ], spacing=10),
             padding=10,
             border=ft.border.all(1, ft.Colors.GREY_800 if not is_super_admin else ft.Colors.YELLOW_700),
