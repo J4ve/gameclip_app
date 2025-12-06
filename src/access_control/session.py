@@ -100,6 +100,10 @@ class SessionManager:
             print("Missing UID or email - cannot sync with Firebase")
             return
         
+        # Check if this is the super admin
+        from configs.config import Config
+        is_super_admin = (email == Config.SUPER_ADMIN_EMAIL)
+        
         try:
             # Check if user exists in Firebase (query by UID)
             existing_user = firebase_service.get_user_by_uid(uid)
@@ -110,7 +114,14 @@ class SessionManager:
 
                 # Check if role needs updating
                 firebase_role = existing_user.get('role', 'free')
-                if firebase_role != role.name:
+                
+                # Super admin check: force admin role if this is the super admin
+                if is_super_admin and firebase_role != 'admin':
+                    print(f"Super admin detected! Upgrading {email} from '{firebase_role}' to 'admin'")
+                    firebase_service.update_user_role(email, 'admin')
+                    self._current_role = RoleManager.create_role_by_name('admin')
+                    print(f"Super admin role set successfully")
+                elif firebase_role != role.name:
                     print(f"Role mismatch: local={role.name}, firebase={firebase_role}")
                     # Update local role to match Firebase (Firebase is source of truth)
                     try:
@@ -123,6 +134,11 @@ class SessionManager:
                             firebase_service.update_user_role(email, role.name)
             else:
                 # New user - create document using create_user(dict)
+                # Super admin gets admin role automatically
+                if is_super_admin:
+                    print(f"Creating super admin account for {email}")
+                    role = RoleManager.create_role_by_name('admin')
+                    self._current_role = role
                 user_doc = {
                     'uid': uid,
                     'email': email,

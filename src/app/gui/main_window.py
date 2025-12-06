@@ -9,7 +9,9 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
+from .admin_dashboard_screen import AdminDashboardScreen
 from access_control.session import session_manager
+from access_control.roles import Permission
 
 
 class MainWindow:
@@ -23,6 +25,10 @@ class MainWindow:
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+        
+        # Admin dashboard (only initialized if user has permission)
+        self.admin_dashboard = None
+        self.current_view = "wizard"  # "wizard" or "admin"
 
         # User info components
         self.user_info_text = None
@@ -223,6 +229,8 @@ class MainWindow:
             animate=ft.Animation(100, "easeOut")
         )
         
+        # Admin dashboard button removed from main window (now in config tab)
+        
         user_section = ft.Container(
             content=self.profile_button,
             right=20,
@@ -293,24 +301,42 @@ class MainWindow:
             top=20,
         )
 
-        stack_children = [
-            ft.Column(
-                [
-                    stepper,
-                    ft.Divider(),
-                    content,
-                ],
+        # Check if we should show admin dashboard or wizard
+        if self.current_view == "admin":
+            # Show admin dashboard instead of wizard
+            if self.admin_dashboard is None:
+                self.admin_dashboard = AdminDashboardScreen(self.page)
+            # Always reload users when switching to admin view
+            self.admin_dashboard.load_users()
+            admin_content = self.admin_dashboard.build()
+            stack_children = [
+                admin_content,
+                user_section,
+            ]
+            return ft.Stack(
+                stack_children,
                 expand=True,
-            ),
-            self.next_button,  # Fixed position overlay
-            user_section,  # User info at top right
-        ]
-        if self.current_step > 0:
-            stack_children.append(self.back_button)  # Show back button only if not at first step
-        return ft.Stack(
-            stack_children,
-            expand=True,
-        )
+            )
+        else:
+            # Show normal wizard view
+            stack_children = [
+                ft.Column(
+                    [
+                        stepper,
+                        ft.Divider(),
+                        content,
+                    ],
+                    expand=True,
+                ),
+                self.next_button,  # Fixed position overlay
+                user_section,  # User info at top right
+            ]
+            if self.current_step > 0:
+                stack_children.append(self.back_button)  # Show back button only if not at first step
+            return ft.Stack(
+                stack_children,
+                expand=True,
+            )
     
     def _handle_logout(self, e):
         print("logout clicked")
@@ -443,4 +469,15 @@ class MainWindow:
         
         self.page.overlay.append(dialog)
         dialog.open = True
+        self.page.update()
+    
+    def _toggle_admin_dashboard(self, e):
+        """Toggle between wizard and admin dashboard views"""
+        if self.current_view == "wizard":
+            self.current_view = "admin"
+        else:
+            self.current_view = "wizard"
+        
+        # Rebuild the page
+        self.page.controls = [self.build()]
         self.page.update()

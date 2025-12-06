@@ -113,6 +113,58 @@ class FirebaseService:
             print(f"Failed to create user: {e}")
             raise
     
+    def create_user_placeholder(self, email: str, role: str) -> bool:
+        """
+        Create a placeholder user document for a user who hasn't logged in yet
+        This allows admins to pre-assign roles before first login
+        
+        Args:
+            email: User's email address
+            role: Role to assign (free, premium, dev, admin)
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # Check if user already exists
+            existing = self.get_user_by_email(email)
+            if existing:
+                # User exists, just update role
+                return self.update_user_role(email, role)
+            
+            # Create placeholder document
+            user_doc = {
+                'email': email,
+                'name': 'Pending',
+                'role': role,
+                'provider': 'placeholder',
+                'created_at': datetime.now(timezone.utc),
+                'last_login': None,
+                'usage_count': 0,
+                'daily_usage': 0,
+                'daily_reset_date': datetime.now(timezone.utc).date().isoformat(),
+                'premium_until': None,
+                'google_id': None,
+                'uid': None,
+                'picture': None,
+                'authenticated': False,
+                'placeholder': True  # Mark as placeholder
+            }
+            
+            # Use email as document ID
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.set(user_doc)
+            
+            print(f"Created placeholder user document for {email} with role {role}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to create placeholder user: {e}")
+            return False
+    
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Get user document by email"""
         if not self.is_available:
