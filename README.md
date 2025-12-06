@@ -19,8 +19,10 @@ An open-source desktop tool for streamers and video editors to automatically upl
 
 **Key Dependencies**
 - `flet` - Cross-platform GUI framework
+- `flet-video` - Video player component for preview functionality
 - `ffmpeg-python` - Python bindings for FFmpeg
 - `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
+- `firebase-admin` - Firebase Admin SDK for user management and Firestore operations
 
 **Configuration & Data**
 - JSON/YAML (templates, profiles)
@@ -419,7 +421,6 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] File type/size validation for video uploads
 - [x] Email validation via OAuth provider
 - [x] Firestore schema validation for user documents
-- [ ] SQL injection prevention (not applicable; using NoSQL)
 
 **Password Hashing**
 - Google OAuth handles password hashing (bcrypt with salt)
