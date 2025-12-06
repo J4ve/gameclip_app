@@ -85,7 +85,7 @@ class FirebaseService:
             user_doc = {
                 'email': user_data.get('email'),
                 'name': user_data.get('name'),
-                'role': user_data.get('role', 'normal'),
+                'role': user_data.get('role', 'free'),
                 'provider': user_data.get('provider', 'google'),
                 'created_at': datetime.now(timezone.utc),
                 'last_login': datetime.now(timezone.utc),
@@ -142,7 +142,7 @@ class FirebaseService:
         try:
             # Query by UID field
             users_ref = self.db.collection('users')
-            query = users_ref.where('uid', '==', uid).limit(1)
+            query = users_ref.where(filter=('uid', '==', uid)).limit(1)
             docs = query.stream()
             
             for doc in docs:
@@ -195,7 +195,7 @@ class FirebaseService:
             else:
                 # Try to find by UID if email document doesn't exist
                 users_ref = self.db.collection('users')
-                query = users_ref.where('uid', '==', uid_or_email).limit(1)
+                query = users_ref.where(filter=('uid', '==', uid_or_email)).limit(1)
                 docs = list(query.stream())
                 
                 if docs:
@@ -274,7 +274,7 @@ class FirebaseService:
             doc_ref = self.db.collection('users').document(email)
             doc_ref.update({
                 'premium_until': premium_until,
-                'role': 'premium' if premium_until > datetime.now(timezone.utc) else 'normal',
+                'role': 'premium' if premium_until > datetime.now(timezone.utc) else 'free',
                 'updated_at': datetime.now(timezone.utc)
             })
             
@@ -304,7 +304,7 @@ class FirebaseService:
                 
                 # Update role if premium expired
                 if not is_premium and user_data.get('role') == 'premium':
-                    self.update_user_role(email, 'normal')
+                    self.update_user_role(email, 'free')
                 
                 return is_premium
             
@@ -335,6 +335,211 @@ class FirebaseService:
         except Exception as e:
             print(f"Failed to get all users: {e}")
             return []
+    
+    # Security & Admin Methods
+    
+    def verify_admin_permission(self, uid_or_email: str) -> bool:
+        """
+        Verify user has admin role in Firestore (backend verification)
+        
+        TODO: Add additional checks:
+        - Session token validation
+        - Rate limiting
+        - IP whitelist verification
+        
+        Args:
+            uid_or_email: User ID or email to verify
+            
+        Returns:
+            bool: True if user is admin, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # Try to get user by email first, then by UID
+            user = self.get_user_by_email(uid_or_email)
+            if not user:
+                user = self.get_user_by_uid(uid_or_email)
+            
+            if not user:
+                print(f"[SECURITY] User not found for verification: {uid_or_email}")
+                return False
+            
+            role = user.get('role', '').lower()
+            is_admin = role == 'admin'
+            
+            print(f"[SECURITY] Admin verification for {uid_or_email}: {is_admin} (role: {role})")
+            return is_admin
+            
+        except Exception as e:
+            print(f"[SECURITY] Admin verification error: {e}")
+            return False
+    
+    def disable_user(self, email: str) -> bool:
+        """
+        Disable user account (soft delete)
+        
+        TODO: Implement full functionality:
+        - Set 'disabled' field to True
+        - Revoke active sessions
+        - Log to audit trail
+        
+        Args:
+            email: User email to disable
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.update({
+                'disabled': True,
+                'disabled_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            })
+            
+            print(f"[ADMIN] Disabled user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to disable user: {e}")
+            return False
+    
+    def enable_user(self, email: str) -> bool:
+        """
+        Enable previously disabled user account
+        
+        Args:
+            email: User email to enable
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.update({
+                'disabled': False,
+                'enabled_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            })
+            
+            print(f"[ADMIN] Enabled user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to enable user: {e}")
+            return False
+    
+    def delete_user(self, email: str) -> bool:
+        """
+        Permanently delete user account
+        
+        TODO: Implement full functionality:
+        - Archive user data before deletion
+        - Delete from Firebase Auth
+        - Log to audit trail
+        - Handle cascade deletion of related data
+        
+        Args:
+            email: User email to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # TODO: Archive user data first
+            # TODO: Delete from Firebase Auth
+            
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.delete()
+            
+            print(f"[ADMIN] Deleted user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to delete user: {e}")
+            return False
+    
+    def log_admin_action(self, admin_email: str, action: str, target_user: str, 
+                        details: Optional[Dict[str, Any]] = None, success: bool = True) -> bool:
+        """
+        Log administrative action to audit trail
+        
+        TODO: Implement full audit logging system:
+        - Store in separate 'admin_audit_logs' collection
+        - Include timestamp, IP address, session info
+        - Restrict read access to admins only
+        - Implement log retention policy
+        
+        Args:
+            admin_email: Email of admin performing action
+            action: Action type (role_change, disable, delete, etc.)
+            target_user: Email of user being affected
+            details: Additional details about the action
+            success: Whether action succeeded
+            
+        Returns:
+            bool: True if logged successfully, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            log_entry = {
+                'admin_email': admin_email,
+                'action': action,
+                'target_user': target_user,
+                'details': details or {},
+                'success': success,
+                'timestamp': datetime.now(timezone.utc),
+                'ip_address': 'TODO',  # TODO: Capture IP address
+                'session_id': 'TODO'   # TODO: Capture session ID
+            }
+            
+            # TODO: Store in 'admin_audit_logs' collection
+            # self.db.collection('admin_audit_logs').add(log_entry)
+            
+            print(f"[AUDIT] {admin_email} -> {action} on {target_user}: {success}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to log admin action: {e}")
+            return False
+    
+    def check_rate_limit(self, user_email: str, action_type: str, max_per_minute: int = 10) -> bool:
+        """
+        Check if user has exceeded rate limit for action
+        
+        TODO: Implement full rate limiting:
+        - Track action counts in memory/Redis cache
+        - Different limits for different action types
+        - Implement sliding window algorithm
+        - Auto-block on excessive violations
+        
+        Args:
+            user_email: Email of user performing action
+            action_type: Type of action (role_change, delete, etc.)
+            max_per_minute: Maximum actions allowed per minute
+            
+        Returns:
+            bool: True if within limit, False if exceeded
+        """
+        # TODO: Implement actual rate limiting logic
+        # For now, always return True (no limiting)
+        return True
 
 
 # Global Firebase service instance

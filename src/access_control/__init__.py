@@ -9,7 +9,7 @@ from access_control.session import session_manager, SessionManager
 
 __all__ = [
     'Role', 'RoleType', 'Permission', 'RoleLimits',
-    'GuestRole', 'NormalRole', 'PremiumRole', 'DevRole', 'AdminRole', 
+    'GuestRole', 'FreeRole', 'PremiumRole', 'DevRole', 'AdminRole', 
     'RoleManager', 'get_role',
     'SessionManager', 'session_manager'
 ]
