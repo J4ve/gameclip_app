@@ -26,10 +26,6 @@ class LoginScreen:
         # Login state
         self.is_logging_in = False
         self.is_guest_logging_in = False
-        
-        # Auth overlay
-        self.auth_overlay = None
-        self.auth_overlay_visible = False
     
     def build(self) -> ft.Container:
         """Build and return the login screen UI"""
@@ -204,14 +200,10 @@ class LoginScreen:
             
             self._show_status("Opening browser for Google authentication...")
             
-            # Show the auth overlay immediately
-            self._show_auth_overlay()
-            
             # Get YouTube service - this will handle the real OAuth flow
             youtube_service = get_youtube_service()
             
             if not youtube_service or not youtube_service.credentials:
-                self._hide_auth_overlay()
                 self._show_error("Google authentication failed")
                 return
             
@@ -292,9 +284,6 @@ class LoginScreen:
             
             self._show_status("Authentication successful!")
             
-            # Hide overlay before callback
-            self._hide_auth_overlay()
-            
             # Call login completion callback
             if self.on_login_complete:
                 self.on_login_complete(user_data, role)
@@ -303,8 +292,6 @@ class LoginScreen:
                 
         except Exception as ex:
             print(f"OAuth error: {ex}")
-            # Hide overlay on error
-            self._hide_auth_overlay()
             self._show_error(f"Authentication failed: {str(ex)}")
             
         finally:

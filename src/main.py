@@ -2,16 +2,26 @@ import flet as ft
 from app.gui import MainWindow
 from app.gui.login_screen import LoginScreen
 from access_control.session import session_manager
+from configs.config import Config
+import sys
 
 
 def main(page: ft.Page):
     """Main application entry point with authentication"""
-    page.title = "Video Merger App"
+    page.title = Config.APP_TITLE
     page.theme_mode = ft.ThemeMode.DARK
-    page.window.width = 1200
-    page.window.height = 950
-    page.window.min_width = 800
-    page.window.min_height = 600
+    
+    # Configure for both desktop and web
+    if page.web:
+        # Web mode - responsive design
+        page.window.width = None
+        page.window.height = None
+    else:
+        # Desktop mode - fixed dimensions
+        page.window.width = Config.APP_WIDTH
+        page.window.height = Config.APP_HEIGHT
+        page.window.min_width = 800
+        page.window.min_height = 600
     
     # Handle login completion and show main app
     def handle_login_complete(user_info, role):
@@ -58,4 +68,9 @@ def main(page: ft.Page):
     page.update()
 
 
-ft.app(main)
+if __name__ == "__main__":
+    # Support both desktop and web modes
+    # Desktop: python src/main.py
+    # Web: flet run --web src/main.py
+    # Or serve on specific host: flet run --web src/main.py -p 8000 -d
+    ft.app(main)

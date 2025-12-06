@@ -5,7 +5,7 @@ Selection Screen - Video selection (Step 1)
 import flet as ft
 from configs.config import Config
 from pathlib import Path
-from app.services.ads_manager import should_show_ads, get_rectangle_ad
+from app.services.ads_manager import should_show_ads, get_banner_ad
 
 
 class SelectionScreen:
@@ -187,32 +187,21 @@ class SelectionScreen:
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         )
         
-        # Add ads for guest users (right side)
+        # Add ads for guest users at bottom
         if should_show_ads():
-            ad = get_rectangle_ad()
+            ad = get_banner_ad()
             if ad:
-                content_with_ad = ft.Row(
+                content_with_ad = ft.Column(
                     [
-                        ft.Container(
-                            content=main_content,
-                            expand=True,
-                        ),
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    ft.Text("Ads", size=10, color=ft.Colors.GREY_500),
-                                    ad,
-                                ],
-                                spacing=5,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                            ),
-                            width=320,
-                        ),
+                        main_content,
+                        ft.Container(height=20),  # Spacer
+                        ad,
                     ],
-                    spacing=20,
-                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=10,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 )
             else:
+                print(f"[SelectionScreen] Ad is None, not adding")
                 content_with_ad = main_content
         else:
             content_with_ad = main_content

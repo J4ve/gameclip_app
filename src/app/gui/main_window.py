@@ -192,18 +192,19 @@ class MainWindow:
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
         
-        # Profile button with user photo and name
+        # Profile button with user photo and name - only show profile image for authenticated users
         user_picture_url = user_info.get('picture', '')
+        is_guest = session_manager.is_guest
         
-        if user_picture_url:
-            # User has profile picture (Google OAuth)
+        if user_picture_url and not is_guest:
+            # Authenticated user with profile picture - show image only
             profile_image = ft.CircleAvatar(
                 foreground_image_src=user_picture_url,
                 radius=16,
                 bgcolor=ft.Colors.BLUE_700
             )
         else:
-            # Guest or no picture - use icon
+            # Guest user or no picture - use icon only for guests
             profile_image = ft.CircleAvatar(
                 content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
                 radius=16,

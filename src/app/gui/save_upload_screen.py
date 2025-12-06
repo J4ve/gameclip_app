@@ -518,14 +518,14 @@ class SaveUploadScreen:
                 margin=ft.margin.only(bottom=10)
             )
 
-        # Main layout - build content list
+        # Main layout - 2 column design: left (videos + preview), right (settings)
         main_content_items: list = [
             ft.Column([
                 ft.Row([
-                    # Left column: Video list and preview
+                    # Left column: Videos list on top, Preview on bottom
                     ft.Container(
                         content=ft.Column([
-                            ft.Text("Videos to Merge", size=16, weight=ft.FontWeight.BOLD),
+                            ft.Text("Selected Videos", size=16, weight=ft.FontWeight.BOLD),
                             ft.Container(
                                 content=ft.Column(video_list_controls, scroll=ft.ScrollMode.AUTO),
                                 height=video_list_height,

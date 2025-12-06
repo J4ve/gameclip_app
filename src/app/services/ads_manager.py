@@ -30,8 +30,10 @@ class AdsManager:
     @staticmethod
     def should_show_ads() -> bool:
         """Check if ads should be shown for current user"""
-        manager = AdsManager()
-        return manager._ad_manager.should_show_ads()
+        # Always check current session, not cached value
+        is_guest = session_manager.is_guest
+        publisher_configured = GoogleAdsService.is_publisher_id_configured()
+        return is_guest and publisher_configured
     
     @staticmethod
     def get_top_banner() -> object:

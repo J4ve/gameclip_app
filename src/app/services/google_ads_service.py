@@ -1,41 +1,132 @@
 """
 Google Ads Service
-Handles Google AdSense integration via WebView for monetizing guest instances
+Handles Google AdSense integration using native Flet components for monetizing guest instances
 """
 
 import flet as ft
 from typing import Optional, Callable
+import webbrowser
 
 
 class GoogleAdsService:
-    """Service to integrate Google AdSense ads via WebView in Flet"""
+    """Service to integrate Google AdSense ads using native Flet components"""
     
-    # Google AdSense Publisher ID - Replace with your actual publisher ID
-    PUBLISHER_ID = "ca-pub-xxxxxxxxxxxxxxxx"
+    # Google AdSense Publisher ID
+    PUBLISHER_ID = "pub-4777093929422930"
     
-    # Ad slot configurations
+    # Ad slot configurations with details
     AD_SLOTS = {
         "horizontal_banner": {
-            "slot_id": "1234567890",  # Replace with actual ad slot ID
+            "slot_id": "5248104584",  # Banner (full-width x 40)
             "width": 728,
             "height": 90,
+            "title": "Sponsored Content",
         },
         "vertical_sidebar": {
-            "slot_id": "0987654321",  # Replace with actual ad slot ID
+            "slot_id": "4196260255",  # Vertical Sidebar (300x600)
             "width": 300,
             "height": 600,
+            "title": "Advertisement",
         },
         "rectangle": {
-            "slot_id": "1122334455",  # Replace with actual ad slot ID
+            "slot_id": "1308859573",  # Rectangle (300x250)
             "width": 300,
             "height": 250,
+            "title": "Featured Ad",
         },
         "leaderboard": {
-            "slot_id": "5566778899",  # Replace with actual ad slot ID
+            "slot_id": "5248104584",  # Leaderboard (970x90)
             "width": 970,
             "height": 90,
+            "title": "Sponsored Content",
         },
     }
+    
+    @staticmethod
+    def create_native_ad(
+        ad_slot_key: str = "rectangle",
+        width: int = 300,
+        height: int = 250,
+        on_click: Optional[Callable] = None,
+        expand: bool = False
+    ) -> ft.Container:
+        """
+        Create a native Flet ad container with clickable areas
+        This works on all platforms where WebView is not supported
+        
+        Args:
+            ad_slot_key: Key from AD_SLOTS dictionary (default: 'rectangle')
+            width: Width of ad container (px)
+            height: Height of ad container (px)
+            on_click: Callback when ad is clicked
+            
+        Returns:
+            ft.Container with native ad design
+        """
+        
+        # Get ad slot configuration
+        ad_config = GoogleAdsService.AD_SLOTS.get(ad_slot_key, GoogleAdsService.AD_SLOTS["rectangle"])
+        
+        def handle_ad_click():
+            """Handle ad click - open AdSense publisher page"""
+            if on_click:
+                on_click()
+            # Open your AdSense page (users can see your ads and stats)
+            webbrowser.open(f"https://www.google.com/adsense/")
+        
+        # Create an attractive ad container
+        ad_container = ft.Container(
+            content=ft.Column(
+                controls=[
+                    ft.Text(
+                        "Ad",
+                        size=7,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.GREY_600,
+                    ),
+                    ft.Divider(height=2, color="transparent"),
+                    ft.Container(
+                        content=ft.Row(
+                            controls=[
+                                ft.Icon(
+                                    ft.Icons.ADS_CLICK,
+                                    size=16,
+                                    color=ft.Colors.BLUE_400,
+                                ),
+                                ft.Column(
+                                    controls=[
+                                        ft.Text(
+                                            "Advertisement",
+                                            size=8,
+                                            weight=ft.FontWeight.BOLD,
+                                            color=ft.Colors.ON_SURFACE,
+                                        ),
+                                    ],
+                                    spacing=0,
+                                    tight=True,
+                                ),
+                            ],
+                            spacing=6,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                        ),
+                        expand=False,
+                    ),
+                ],
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=0,
+            ),
+            width=None,
+            height=height,
+            expand=False,
+            bgcolor=ft.Colors.with_opacity(0.02, "#CCCCCC"),
+            border=ft.border.all(1, ft.Colors.with_opacity(0.2, "#DDDDDD")),
+            border_radius=6,
+            padding=6,
+            ink=True,
+            on_click=lambda e: handle_ad_click(),
+        )
+        
+        return ad_container
     
     @staticmethod
     def create_ad_webview(
@@ -43,9 +134,9 @@ class GoogleAdsService:
         width: int = 300,
         height: int = 250,
         on_ad_loaded: Optional[Callable] = None
-    ) -> ft.WebView:
+    ) -> ft.Control:
         """
-        Create a WebView containing a Google AdSense ad
+        Create an ad container - falls back to native ad since WebView not supported
         
         Args:
             ad_slot_key: Key from AD_SLOTS dictionary (default: 'rectangle')
@@ -54,83 +145,21 @@ class GoogleAdsService:
             on_ad_loaded: Callback when ad loads
             
         Returns:
-            ft.WebView with Google AdSense ad
+            ft.Control with ad (native implementation)
         """
         
-        # Get ad slot configuration
-        ad_config = GoogleAdsService.AD_SLOTS.get(ad_slot_key, GoogleAdsService.AD_SLOTS["rectangle"])
-        slot_id = ad_config["slot_id"]
-        
-        # HTML content for AdSense ad
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={GoogleAdsService.PUBLISHER_ID}"
-                    crossorigin="anonymous"></script>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 0;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    background: transparent;
-                    font-family: Arial, sans-serif;
-                }}
-                .ad-container {{
-                    background: transparent;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="ad-container">
-                <ins class="adsbygoogle"
-                     style="display:inline-block;width:{width}px;height:{height}px"
-                     data-ad-client="{GoogleAdsService.PUBLISHER_ID}"
-                     data-ad-slot="{slot_id}"></ins>
-                <script>
-                    (adsbygoogle = window.adsbygoogle || []).push({{}});
-                </script>
-            </div>
-        </body>
-        </html>
-        """
-        
-        # Create WebView
-        webview = ft.WebView(
-            src_base64=GoogleAdsService._encode_html_to_base64(html_content),
-            width=width,
-            height=height,
-            expand=False,
-        )
+        ad = GoogleAdsService.create_native_ad(ad_slot_key, width, height, on_ad_loaded)
         
         if on_ad_loaded:
             on_ad_loaded()
         
-        return webview
-    
-    @staticmethod
-    def _encode_html_to_base64(html_content: str) -> str:
-        """
-        Encode HTML content to base64 for WebView src_base64
-        
-        Args:
-            html_content: HTML string
-            
-        Returns:
-            Base64 encoded data URI
-        """
-        import base64
-        encoded = base64.b64encode(html_content.encode()).decode()
-        return f"data:text/html;base64,{encoded}"
+        return ad
     
     @staticmethod
     def create_ad_container(
         ad_slot_key: str = "rectangle",
-        on_ad_loaded: Optional[Callable] = None
+        on_ad_loaded: Optional[Callable] = None,
+        expand: bool = False
     ) -> ft.Container:
         """
         Create a Container with Google AdSense ad
@@ -138,25 +167,18 @@ class GoogleAdsService:
         Args:
             ad_slot_key: Key from AD_SLOTS dictionary
             on_ad_loaded: Callback when ad loads
+            expand: Whether the ad should expand to fill available space
             
         Returns:
-            ft.Container with ad
+            ft.Container with native ad
         """
         
         ad_config = GoogleAdsService.AD_SLOTS.get(ad_slot_key, GoogleAdsService.AD_SLOTS["rectangle"])
         width = ad_config["width"]
         height = ad_config["height"]
         
-        webview = GoogleAdsService.create_ad_webview(ad_slot_key, width, height, on_ad_loaded)
-        
-        return ft.Container(
-            content=webview,
-            width=width,
-            height=height,
-            border_radius=8,
-            bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
-            padding=5,
-        )
+        # Use native ad instead of WebView
+        return GoogleAdsService.create_native_ad(ad_slot_key, width, height, on_ad_loaded, expand)
     
     @staticmethod
     def is_publisher_id_configured() -> bool:
@@ -219,7 +241,7 @@ class GuestAdManager:
         if not self.should_show_ads():
             return None
         
-        return GoogleAdsService.create_ad_container("horizontal_banner")
+        return GoogleAdsService.create_ad_container("horizontal_banner", expand=True)
     
     def get_ad_rectangle(self) -> Optional[ft.Container]:
         """
