@@ -9,7 +9,12 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
+from .admin_dashboard import AdminDashboardScreen
 from access_control.session import session_manager
+from access_control.roles import Permission
+import sys
+import platform
+from datetime import datetime
 
 
 class MainWindow:
@@ -21,9 +26,12 @@ class MainWindow:
         self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
-        print(f"SelectionScreen created: {self.selection_screen}")
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+        
+        # Admin dashboard (only initialized if user has permission)
+        self.admin_dashboard = None
+        self.current_view = "wizard"  # "wizard" or "admin"
 
         # User info components
         self.user_info_text = None
@@ -97,8 +105,8 @@ class MainWindow:
     def setup_page(self):
         """Configure page settings"""
         self.page.title = Config.APP_TITLE
-        self.page.window_width = Config.APP_WIDTH
-        self.page.window_height = Config.APP_HEIGHT
+        self.page.window.width = Config.APP_WIDTH
+        self.page.window.height = Config.APP_HEIGHT
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0
@@ -193,18 +201,20 @@ class MainWindow:
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
         
-        # Profile button with user photo and name
+        # Profile button with user photo and name - only show profile image for authenticated users
         user_picture_url = user_info.get('picture', '')
+        is_guest = session_manager.is_guest
         
-        if user_picture_url:
-            # User has profile picture (Google OAuth)
+        if user_picture_url and not is_guest:
+            # Authenticated user with profile picture - show image only
             profile_image = ft.CircleAvatar(
                 foreground_image_src=user_picture_url,
+                content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),  # Loading/fallback icon
                 radius=16,
                 bgcolor=ft.Colors.BLUE_700
             )
         else:
-            # Guest or no picture - use icon
+            # Guest user or no picture - use icon only for guests
             profile_image = ft.CircleAvatar(
                 content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
                 radius=16,
@@ -225,6 +235,8 @@ class MainWindow:
             ink=True,
             animate=ft.Animation(100, "easeOut")
         )
+        
+        # Admin dashboard button removed from main window (now in config tab)
         
         user_section = ft.Container(
             content=self.profile_button,
@@ -296,24 +308,42 @@ class MainWindow:
             top=20,
         )
 
-        stack_children = [
-            ft.Column(
-                [
-                    stepper,
-                    ft.Divider(),
-                    content,
-                ],
+        # Check if we should show admin dashboard or wizard
+        if self.current_view == "admin":
+            # Show admin dashboard instead of wizard
+            if self.admin_dashboard is None:
+                self.admin_dashboard = AdminDashboardScreen(self.page)
+            # Always reload users when switching to admin view
+            self.admin_dashboard.load_users()
+            admin_content = self.admin_dashboard.build()
+            stack_children = [
+                admin_content,
+                user_section,
+            ]
+            return ft.Stack(
+                stack_children,
                 expand=True,
-            ),
-            self.next_button,  # Fixed position overlay
-            user_section,  # User info at top right
-        ]
-        if self.current_step > 0:
-            stack_children.append(self.back_button)  # Show back button only if not at first step
-        return ft.Stack(
-            stack_children,
-            expand=True,
-        )
+            )
+        else:
+            # Show normal wizard view
+            stack_children = [
+                ft.Column(
+                    [
+                        stepper,
+                        ft.Divider(),
+                        content,
+                    ],
+                    expand=True,
+                ),
+                self.next_button,  # Fixed position overlay
+                user_section,  # User info at top right
+            ]
+            if self.current_step > 0:
+                stack_children.append(self.back_button)  # Show back button only if not at first step
+            return ft.Stack(
+                stack_children,
+                expand=True,
+            )
     
     def _handle_logout(self, e):
         print("logout clicked")
@@ -333,15 +363,17 @@ class MainWindow:
         """Return to login screen after logout"""
         print("Returning to login screen...")
         try:
+            # Clear all overlays and dialogs
             self.page.dialog = None
-        except Exception:
-            pass
-        try:
             self.page.overlay.clear()
-        except Exception:
-            pass
-        # Use Flet's clean() to reset page reliably, then render login UI immediately
-        self.page.clean()
+            self.page.clean()
+        except Exception as ex:
+            print(f"Error clearing page: {ex}")
+        
+        # Small delay to ensure page is clean
+        import time
+        time.sleep(0.1)
+        
         # Show login screen
         def handle_login_complete(user_info, role):
             print(f"Re-login complete: {user_info}, Role: {role.name}")
@@ -353,23 +385,31 @@ class MainWindow:
                 main_layout = new_window.build()
                 self.page.controls = [main_layout]
                 self.page.update()
-                self.page.snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
-                    action="OK"
+                
+                # Show welcome message
+                snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Welcome, {user_info.get('name') or user_info.get('email', 'Guest')}!")
                 )
-                self.page.snack_bar.open = True
+                self.page.overlay.append(snack_bar)
+                snack_bar.open = True
                 self.page.update()
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
                 self.page.update()
-        login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
-        login_ui = login_screen.build()
-        self.page.controls = [login_ui]
-        self.page.update()
+        
+        try:
+            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+            login_ui = login_screen.build()
+            self.page.controls = [login_ui]
+            self.page.update()
+        except Exception as ex:
+            print(f"Error showing login screen: {ex}")
     
     def _open_settings(self, e):
         """Open settings dialog"""
+        from access_control.roles import RoleType
+        
         def close_settings(e):
             dialog.open = False
             self.page.update()
@@ -379,9 +419,44 @@ class MainWindow:
             self.page.update()
             self._handle_logout(e)
         
-        # Create config tab instance
-        config_tab = ConfigTab(self.page)
+        def on_login_click(e):
+            """Handle login suggestion click from guest config"""
+            try:
+                dialog.open = False
+                self.page.update()
+            except Exception as ex:
+                print(f"Error closing dialog: {ex}")
+            self._return_to_login()
+        
+        # Create config tab instance with callbacks
+        config_tab = ConfigTab(self.page, on_logout_clicked=logout_and_close, on_login_clicked=on_login_click)
         config_content = config_tab.build()
+        
+        # Determine if user is guest to customize dialog actions
+        is_guest = session_manager.is_guest
+        
+        # Build actions list based on user type
+        actions = []
+        if is_guest:
+            actions.append(
+                ft.TextButton(
+                    "Back to Login",
+                    icon=ft.Icons.LOGIN,
+                    on_click=on_login_click,
+                    style=ft.ButtonStyle(color=ft.Colors.BLUE_400)
+                )
+            )
+        else:
+            actions.append(
+                ft.TextButton(
+                    "Logout",
+                    icon=ft.Icons.LOGOUT,
+                    on_click=logout_and_close,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
+                )
+            )
+        
+        actions.append(ft.TextButton("Close", on_click=close_settings))
         
         dialog = ft.AlertDialog(
             modal=True,
@@ -391,21 +466,24 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=800,
-                height=600,
+                width=900,
+                height=650,
             ),
-            actions=[
-                ft.TextButton(
-                    "Logout",
-                    icon=ft.Icons.LOGOUT,
-                    on_click=logout_and_close,
-                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
-                ),
-                ft.TextButton("Close", on_click=close_settings),
-            ],
+            actions=actions,
             actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
         
         self.page.overlay.append(dialog)
         dialog.open = True
+        self.page.update()
+    
+    def _toggle_admin_dashboard(self, e):
+        """Toggle between wizard and admin dashboard views"""
+        if self.current_view == "wizard":
+            self.current_view = "admin"
+        else:
+            self.current_view = "wizard"
+        
+        # Rebuild the page
+        self.page.controls = [self.build()]
         self.page.update()

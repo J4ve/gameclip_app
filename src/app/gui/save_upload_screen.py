@@ -82,8 +82,6 @@ class SaveUploadScreen:
             return "Guest user"
         elif role_lower == 'premium':
             return "Premium user"
-        elif role_lower == 'dev':
-            return "Developer account"
         elif role_lower == 'admin':
             return "Administrator account"
         else:
@@ -92,8 +90,30 @@ class SaveUploadScreen:
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
+        
+        # Clear old cached preview files when new videos are selected
+        if self.video_processor is not None:
+            self.video_processor.cache_processor.clear_all_cache()
+        
+        # Also manually clean up any leftover cache files from the cache directory
+        self._clean_cache_directory()
+        
         if self.videos and not self.is_merging_preview:
             self._merge_preview()
+        
+    def _clean_cache_directory(self):
+        """Clean up old cache files from the cache directory"""
+        try:
+            cache_dir = Path(self.cache_directory)
+            if cache_dir.exists():
+                # Remove all preview cache files (preview_*.mp4)
+                for cache_file in cache_dir.glob("preview_*.mp4"):
+                    try:
+                        cache_file.unlink()
+                    except Exception:
+                        pass  # Ignore errors, file might be in use
+        except Exception:
+            pass  # Ignore directory errors
         
     def _initialize_video_processor(self):
         """Lazy load video processor"""
@@ -461,8 +481,9 @@ class SaveUploadScreen:
         main_content = ft.Column([
             # Add ad banner if user should see ads
             *([ad_banner] if ad_banner else []),
+            
             ft.Row([
-                # Left column: Video list and preview
+                # Left column: Videos list on top, Preview on bottom
                 ft.Container(
                     content=ft.Column([
                         ft.Text("Selected Videos", size=16, weight=ft.FontWeight.BOLD),
@@ -491,7 +512,7 @@ class SaveUploadScreen:
                         progress_section,
                         buttons_section,
                     ], scroll=ft.ScrollMode.AUTO, spacing=15),
-                    expand=2,
+                    expand=1,
                     padding=20,
                     bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
                     border_radius=10,
