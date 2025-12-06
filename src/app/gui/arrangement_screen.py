@@ -222,3 +222,22 @@ class ArrangementScreen:
         self.videos = videos or []
         self.selected_video_index = 0
         self._update_video_list()
+        
+        # Clear old cached preview files when videos are updated in arrangement screen
+        # This ensures the SaveUploadScreen will create fresh cache for the new selection
+        self._clear_preview_cache()
+    
+    def _clear_preview_cache(self):
+        """Clear old preview cache files when videos change"""
+        try:
+            from pathlib import Path
+            cache_dir = Path.home() / "Videos" / "VideoMerger" / ".cache"
+            if cache_dir.exists():
+                # Remove all preview cache files (preview_*.mp4)
+                for cache_file in cache_dir.glob("preview_*.mp4"):
+                    try:
+                        cache_file.unlink()
+                    except Exception:
+                        pass  # Ignore errors, file might be in use
+        except Exception:
+            pass  # Ignore any errors
