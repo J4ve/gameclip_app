@@ -275,6 +275,16 @@ class CacheProcessor:
                 except Exception:
                     pass
     
+    def clear_all_cache(self):
+        """Clear ALL cached files immediately"""
+        for cache_file in self.cached_files[:]:
+            if os.path.exists(cache_file):
+                try:
+                    os.remove(cache_file)
+                    self.cached_files.remove(cache_file)
+                except Exception:
+                    pass
+    
     def cancel_caching(self):
         """Cancel current caching operation"""
         if self.current_process:
