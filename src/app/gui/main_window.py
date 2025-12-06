@@ -4,6 +4,7 @@ Main Window - Wizard Navigation
 
 import flet as ft
 from configs.config import Config
+from .login_screen import LoginScreen
 from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
@@ -20,7 +21,6 @@ class MainWindow:
         self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
-        print(f"SelectionScreen created: {self.selection_screen}")
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
 
@@ -96,13 +96,9 @@ class MainWindow:
     def setup_page(self):
         """Configure page settings"""
         self.page.title = Config.APP_TITLE
-        self.page.window_width = Config.APP_WIDTH
-        self.page.window_height = Config.APP_HEIGHT
-        self.page.window.center() 
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0
-        # TODO: Add app bar with config button
         
     def go_to_step(self, step):
         """Navigate to specific step"""
@@ -193,43 +189,49 @@ class MainWindow:
         user_info = session_manager.get_user_display_info()
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
-        self.user_info_text = ft.Text(
-            f"{display_name} ({user_info['role']})",
-            size=12,
-            color=ft.Colors.CYAN_400
-        )
         
-        self.logout_button = ft.IconButton(
-            icon=ft.Icons.LOGOUT,
-            icon_color=ft.Colors.RED_400,
-            tooltip="Logout",
-            on_click=lambda e: self._handle_logout(e),
-            width=30,
-            height=30
-        )
+        # Profile button with user photo and name
+        user_picture_url = user_info.get('picture', '')
         
-        self.settings_button = ft.IconButton(
-            icon=ft.Icons.SETTINGS,
-            icon_color=ft.Colors.GREY_400,
-            tooltip="Settings & Templates",
+        if user_picture_url:
+            # User has profile picture (Google OAuth)
+            profile_image = ft.CircleAvatar(
+                foreground_image_src=user_picture_url,
+                radius=16,
+                bgcolor=ft.Colors.BLUE_700
+            )
+        else:
+            # Guest or no picture - use icon
+            profile_image = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
+                radius=16,
+                bgcolor=ft.Colors.GREY_700
+            )
+        
+        self.profile_button = ft.Container(
+            content=ft.Row([
+                profile_image,
+                ft.Text(display_name, size=13, weight=ft.FontWeight.W_500)
+            ], spacing=8, tight=True),
             on_click=self._open_settings,
-            width=30,
-            height=30
+            padding=ft.padding.symmetric(horizontal=12, vertical=6),
+            border_radius=20,
+            bgcolor=ft.Colors.with_opacity(0.1, "#00ACC1"),
+            border=ft.border.all(1, ft.Colors.with_opacity(0.3, "#00ACC1")),
+            tooltip="Settings & Account",
+            ink=True,
+            animate=ft.Animation(100, "easeOut")
         )
         
         user_section = ft.Container(
-            content=ft.Row([
-                self.user_info_text,
-                self.settings_button,
-                self.logout_button
-            ], spacing=5, alignment=ft.MainAxisAlignment.END),
+            content=self.profile_button,
             right=20,
             top=20
         )
 
         # Settings dialog will be shown when settings button is clicked
 
-        # build the stepper indicator
+        # build the stepper indicator (responsive with side padding)
         stepper = ft.Container(
             content=ft.Row([
                 self.step1_indicator,
@@ -240,10 +242,11 @@ class MainWindow:
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             ),
-            padding=ft.padding.only(top=20, left=200, right=200),
+            padding=20,
             bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
             border_radius=15,
-            margin=ft.margin.symmetric(horizontal=20, vertical=10),
+            margin=ft.margin.symmetric(horizontal=170, vertical=10),
+            expand=False,
         )
 
         # Fixed next button at bottom right
@@ -327,17 +330,18 @@ class MainWindow:
         """Return to login screen after logout"""
         print("Returning to login screen...")
         try:
+            # Clear all overlays and dialogs
             self.page.dialog = None
-        except Exception:
-            pass
-        try:
             self.page.overlay.clear()
-        except Exception:
-            pass
-        # Use Flet's clean() to reset page reliably, then render login UI immediately
-        self.page.clean()
+            self.page.clean()
+        except Exception as ex:
+            print(f"Error clearing page: {ex}")
+        
+        # Small delay to ensure page is clean
+        import time
+        time.sleep(0.1)
+        
         # Show login screen
-        from .login_screen import LoginScreen
         def handle_login_complete(user_info, role):
             print(f"Re-login complete: {user_info}, Role: {role.name}")
             session_manager.login(user_info, role)
@@ -348,46 +352,93 @@ class MainWindow:
                 main_layout = new_window.build()
                 self.page.controls = [main_layout]
                 self.page.update()
-                self.page.snack_bar = ft.SnackBar(
+                
+                # Show welcome message
+                snack_bar = ft.SnackBar(
                     content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
                     action="OK"
                 )
-                self.page.snack_bar.open = True
+                self.page.overlay.append(snack_bar)
+                snack_bar.open = True
                 self.page.update()
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
                 self.page.update()
-        login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
-        login_ui = login_screen.build()
-        self.page.controls = [login_ui]
-        self.page.update()
+        
+        try:
+            login_screen = LoginScreen(self.page, on_login_complete=handle_login_complete)
+            login_ui = login_screen.build()
+            self.page.controls = [login_ui]
+            self.page.update()
+        except Exception as ex:
+            print(f"Error showing login screen: {ex}")
     
     def _open_settings(self, e):
         """Open settings dialog"""
+        from access_control.roles import RoleType
+        
         def close_settings(e):
             dialog.open = False
             self.page.update()
         
-        # Create config tab instance
-        config_tab = ConfigTab(self.page)
+        def logout_and_close(e):
+            dialog.open = False
+            self.page.update()
+            self._handle_logout(e)
+        
+        def on_login_click(e):
+            """Handle login suggestion click from guest config"""
+            try:
+                dialog.open = False
+                self.page.update()
+            except Exception as ex:
+                print(f"Error closing dialog: {ex}")
+            self._return_to_login()
+        
+        # Create config tab instance with callbacks
+        config_tab = ConfigTab(self.page, on_logout_clicked=logout_and_close, on_login_clicked=on_login_click)
         config_content = config_tab.build()
+        
+        # Determine if user is guest to customize dialog actions
+        is_guest = session_manager.is_guest
+        
+        # Build actions list based on user type
+        actions = []
+        if is_guest:
+            actions.append(
+                ft.TextButton(
+                    "Back to Login",
+                    icon=ft.Icons.LOGIN,
+                    on_click=on_login_click,
+                    style=ft.ButtonStyle(color=ft.Colors.BLUE_400)
+                )
+            )
+        else:
+            actions.append(
+                ft.TextButton(
+                    "Logout",
+                    icon=ft.Icons.LOGOUT,
+                    on_click=logout_and_close,
+                    style=ft.ButtonStyle(color=ft.Colors.RED_400)
+                )
+            )
+        
+        actions.append(ft.TextButton("Close", on_click=close_settings))
         
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Row([
                 ft.Icon(ft.Icons.SETTINGS, color=ft.Colors.BLUE_400),
-                ft.Text("Settings & Configuration", size=18)
+                ft.Text("User Settings & Configuration", size=18)
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
                 width=800,
                 height=600,
             ),
-            actions=[
-                ft.TextButton("Close", on_click=close_settings),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
+            actions=actions,
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
         
         self.page.overlay.append(dialog)

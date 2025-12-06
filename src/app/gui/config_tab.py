@@ -1,5 +1,6 @@
 """
 Config Tab - Application settings and metadata templates
+Supports both authenticated (Google OAuth) and guest user instances
 """
 
 import flet as ft
@@ -8,13 +9,20 @@ import os
 from pathlib import Path
 from configs.config import Config
 from access_control.session import session_manager
+from access_control.roles import RoleType
 
 
 class ConfigTab:
     """Config tab for app settings and metadata templates"""
     
-    def __init__(self, page):
+    def __init__(self, page, on_logout_clicked=None, on_login_clicked=None):
         self.page = page
+        self.on_logout_clicked = on_logout_clicked
+        self.on_login_clicked = on_login_clicked
+        
+        # Detect if user is guest or authenticated
+        self.is_guest = session_manager.is_guest
+        self.admin_clicks = 0  # Counter for hidden admin button
         
         # Metadata template fields
         self.template_name_field = None
@@ -58,7 +66,15 @@ class ConfigTab:
         self._make_option = make_option
         
     def build(self):
-        """Build and return config tab layout"""
+        """Build and return config tab layout based on user role"""
+        
+        if self.is_guest:
+            return self._build_guest_config()
+        else:
+            return self._build_authenticated_config()
+    
+    def _build_authenticated_config(self):
+        """Build config tab for authenticated (Google OAuth) users"""
         
         # Metadata Templates Section
         templates_section = self._build_templates_section()
@@ -69,9 +85,20 @@ class ConfigTab:
         # Account Info Section
         account_section = self._build_account_section()
         
+        # Hidden admin button container (click counter on title)
+        title_container = ft.GestureDetector(
+            content=ft.Text(
+                "Configuration", 
+                size=24, 
+                weight=ft.FontWeight.BOLD, 
+                color=ft.Colors.BLUE_400
+            ),
+            on_tap=self._handle_admin_click
+        )
+        
         return ft.Container(
             content=ft.Column([
-                ft.Text("Configuration", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
+                title_container,
                 ft.Divider(),
                 
                 account_section,
@@ -86,6 +113,165 @@ class ConfigTab:
             padding=20,
             expand=True
         )
+    
+    def _build_guest_config(self):
+        """Build config tab for guest users (no YouTube access)"""
+        
+        user_info = session_manager.get_user_display_info()
+        user_name = user_info.get('name', 'Guest User')
+        
+        # Google login suggestion
+        login_suggestion = ft.Container(
+            content=ft.Column([
+                ft.Icon(ft.Icons.INFO, color=ft.Colors.AMBER_700, size=32),
+                ft.Text(
+                    "Sign in with Google",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                    color=ft.Colors.AMBER_700
+                ),
+                ft.Text(
+                    "Access metadata templates and upload your merged videos to YouTube",
+                    size=12,
+                    color=ft.Colors.GREY_400,
+                    text_align=ft.TextAlign.CENTER
+                ),
+            ], spacing=12, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            padding=15,
+            bgcolor=ft.Colors.with_opacity(0.15, "#FFA500"),
+            border_radius=8,
+            border=ft.border.all(1, ft.Colors.with_opacity(0.3, "#FFA500")),
+            alignment=ft.alignment.center,
+        )
+        
+        # App Settings Section (still available for guests)
+        settings_section = self._build_settings_section()
+        
+        # Guest account info
+        account_section = ft.Container(
+            content=ft.Column([
+                ft.Text("Account Information", size=18, weight=ft.FontWeight.BOLD),
+                ft.Row([
+                    ft.Icon(ft.Icons.PERSON, color=ft.Colors.GREY_700),
+                    ft.Column([
+                        ft.Text(f"Status: Guest", size=14, color=ft.Colors.GREY_400),
+                        ft.Text(f"You can merge and save videos locally", size=12, color=ft.Colors.GREY_500),
+                    ], spacing=2),
+                ], spacing=10),
+            ], spacing=10),
+            padding=15,
+            bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+            border_radius=8,
+        )
+        
+        # Hidden admin button container on title
+        title_container = ft.GestureDetector(
+            content=ft.Text(
+                "Configuration", 
+                size=24, 
+                weight=ft.FontWeight.BOLD, 
+                color=ft.Colors.BLUE_400
+            ),
+            on_tap=self._handle_admin_click
+        )
+        
+        return ft.Container(
+            content=ft.Column([
+                title_container,
+                ft.Divider(),
+                
+                account_section,
+                ft.Divider(),
+                
+                login_suggestion,
+                ft.Divider(),
+                
+                settings_section,
+                
+            ], spacing=20, scroll=ft.ScrollMode.AUTO),
+            padding=20,
+            expand=True
+        )
+    
+    def _handle_admin_click(self, e):
+        """Handle clicks on title for admin access (hidden button)"""
+        self.admin_clicks += 1
+        
+        # Reset counter after 3 seconds of inactivity
+        if self.admin_clicks == 1:
+            def reset_counter():
+                self.admin_clicks = 0
+            self.page.run_task(lambda: __import__('asyncio').sleep(3) or reset_counter())
+        
+        # 5 quick clicks = admin access
+        if self.admin_clicks >= 5:
+            self.admin_clicks = 0
+            self._open_admin_panel()
+    
+    def _open_admin_panel(self):
+        """Open admin management panel"""
+        admin_content = ft.Container(
+            content=ft.Column([
+                ft.Icon(ft.Icons.ADMIN_PANEL_SETTINGS, color=ft.Colors.ORANGE_400, size=40),
+                ft.Text("Admin Management", size=18, weight=ft.FontWeight.BOLD),
+                ft.Divider(),
+                
+                ft.Text(
+                    "Admin Panel",
+                    size=14,
+                    color=ft.Colors.GREY_400
+                ),
+                
+                ft.ElevatedButton(
+                    "Manage Users",
+                    icon=ft.Icons.PEOPLE,
+                    on_click=self._admin_manage_users,
+                    bgcolor=ft.Colors.ORANGE_700,
+                    color=ft.Colors.WHITE,
+                    width=200,
+                ),
+                
+                ft.ElevatedButton(
+                    "View Analytics",
+                    icon=ft.Icons.BAR_CHART,
+                    on_click=self._admin_view_analytics,
+                    bgcolor=ft.Colors.ORANGE_700,
+                    color=ft.Colors.WHITE,
+                    width=200,
+                ),
+                
+                ft.Text(
+                    "Admin features coming soon...",
+                    size=10,
+                    color=ft.Colors.GREY_600,
+                    italic=True
+                ),
+                
+            ], spacing=15, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            padding=20,
+            bgcolor=ft.Colors.with_opacity(0.1, "#FF9800"),
+            border_radius=8,
+        )
+        
+        def close_admin(e):
+            admin_dialog.open = False
+            self.page.update()
+        
+        admin_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.ADMIN_PANEL_SETTINGS, color=ft.Colors.ORANGE_400),
+                ft.Text("Admin Panel", size=18)
+            ], spacing=10),
+            content=admin_content,
+            actions=[
+                ft.TextButton("Close", on_click=close_admin),
+            ],
+        )
+        
+        self.page.overlay.append(admin_dialog)
+        admin_dialog.open = True
+        self.page.update()
     
     def _build_account_section(self):
         """Build account information section"""
@@ -127,7 +313,7 @@ class ConfigTab:
         )
     
     def _build_templates_section(self):
-        """Build metadata templates section"""
+        """Build metadata templates section with presets"""
         # Template selector
         # Dropdown options creation is delegated to _get_template_options which
         # uses a compatibility helper to construct Option objects for different
@@ -184,31 +370,53 @@ class ConfigTab:
         
         # Template buttons
         save_template_btn = ft.ElevatedButton(
-            "Save Template",
+            "Save as Local Preset",
             icon=ft.Icons.SAVE,
             on_click=self._save_template,
-            bgcolor=ft.Colors.GREEN_700
+            bgcolor=ft.Colors.GREEN_700,
+            color=ft.Colors.WHITE
         )
         
         load_template_btn = ft.ElevatedButton(
             "Load Template",
             icon=ft.Icons.UPLOAD_FILE,
             on_click=self._load_template,
-            bgcolor=ft.Colors.BLUE_700
+            bgcolor=ft.Colors.BLUE_700,
+            color=ft.Colors.WHITE
         )
         
         delete_template_btn = ft.ElevatedButton(
             "Delete Template",
             icon=ft.Icons.DELETE,
             on_click=self._delete_template,
-            bgcolor=ft.Colors.RED_700
+            bgcolor=ft.Colors.RED_700,
+            color=ft.Colors.WHITE
+        )
+        
+        # Database Preset buttons
+        save_preset_btn = ft.ElevatedButton(
+            "Save as Database Preset",
+            icon=ft.Icons.CLOUD_UPLOAD,
+            on_click=self._save_preset_to_database,
+            bgcolor=ft.Colors.PURPLE_700,
+            color=ft.Colors.WHITE
+        )
+        
+        load_preset_btn = ft.ElevatedButton(
+            "Load from Database",
+            icon=ft.Icons.CLOUD_DOWNLOAD,
+            on_click=self._load_presets_from_database,
+            bgcolor=ft.Colors.PURPLE_700,
+            color=ft.Colors.WHITE
         )
         
         return ft.Container(
             content=ft.Column([
-                ft.Text("Metadata Templates", size=18, weight=ft.FontWeight.BOLD),
+                ft.Text("Metadata Templates & Presets", size=18, weight=ft.FontWeight.BOLD),
                 ft.Text("Create reusable templates for video metadata", size=12, color=ft.Colors.GREY_400),
                 
+                # Local templates section
+                ft.Text("Local Templates (JSON Files)", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY_300),
                 ft.Row([self.templates_dropdown, load_template_btn], spacing=10),
                 
                 self.template_name_field,
@@ -224,6 +432,17 @@ class ConfigTab:
                 ft.Row([
                     save_template_btn,
                     delete_template_btn,
+                ], spacing=10),
+                
+                ft.Divider(),
+                
+                # Database presets section
+                ft.Text("Cloud Presets", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.PURPLE_300),
+                ft.Text("Save your presets to the cloud for use across devices", size=10, color=ft.Colors.GREY_500),
+                
+                ft.Row([
+                    save_preset_btn,
+                    load_preset_btn,
                 ], spacing=10),
                 
             ], spacing=15),
@@ -266,7 +485,8 @@ class ConfigTab:
             "Test FFmpeg",
             icon=ft.Icons.PLAY_ARROW,
             on_click=self._test_ffmpeg,
-            bgcolor=ft.Colors.ORANGE_700
+            bgcolor=ft.Colors.ORANGE_700,
+            color=ft.Colors.WHITE
         )
         
         # Save settings button
@@ -274,7 +494,8 @@ class ConfigTab:
             "Save Settings",
             icon=ft.Icons.SETTINGS,
             on_click=self._save_settings,
-            bgcolor=ft.Colors.GREEN_700
+            bgcolor=ft.Colors.GREEN_700,
+            color=ft.Colors.WHITE
         )
         
         return ft.Container(
@@ -568,3 +789,174 @@ class ConfigTab:
             )
             self.page.snack_bar.open = True
             self.page.update()
+    
+    def _admin_manage_users(self, e):
+        """Handle admin manage users action"""
+        self._show_success("User management feature coming soon!")
+    
+    def _admin_view_analytics(self, e):
+        """Handle admin view analytics action"""
+        self._show_success("Analytics view coming soon!")
+    
+    def _save_preset_to_database(self, e=None):
+        """Save current template as a preset to Supabase database"""
+        try:
+            from access_control.supabase_service import get_supabase_service
+            
+            preset_name = (self.template_name_field.value or "").strip()
+            if not preset_name:
+                self._show_error("Please enter a preset name (e.g., Valorant, Lethal Company)")
+                return
+            
+            supabase = get_supabase_service()
+            if not supabase.is_available:
+                self._show_error("Database connection not available. Check your Supabase configuration.")
+                return
+            
+            user_id = session_manager.uid
+            if not user_id:
+                self._show_error("Cannot save preset: No user ID found")
+                return
+            
+            preset_data = {
+                "name": preset_name,
+                "title": self.default_title_field.value or "",
+                "description": self.default_description_field.value or "",
+                "tags": self.default_tags_field.value or "",
+                "visibility": self.default_visibility_dropdown.value or "unlisted",
+                "made_for_kids": self.default_kids_checkbox.value or False,
+                "metadata": {
+                    "created_from": "config_tab",
+                    "video_type": preset_name
+                }
+            }
+            
+            # Create preset
+            result = supabase.create_preset(user_id, preset_data)
+            self._show_success(f"Preset '{preset_name}' saved to cloud!")
+            
+        except Exception as ex:
+            print(f"_save_preset_to_database error: {ex}")
+            self._show_error(f"Failed to save preset: {str(ex)}")
+    
+    def _load_presets_from_database(self, e=None):
+        """Load presets from Supabase database"""
+        try:
+            from access_control.supabase_service import get_supabase_service
+            
+            supabase = get_supabase_service()
+            if not supabase.is_available:
+                self._show_error("Database connection not available. Check your Supabase configuration.")
+                return
+            
+            user_id = session_manager.uid
+            if not user_id:
+                self._show_error("Cannot load presets: No user ID found")
+                return
+            
+            # Fetch presets from database
+            presets = supabase.get_user_presets(user_id)
+            if not presets:
+                self._show_error("No cloud presets found. Create one first!")
+                return
+            
+            # Show presets in a dialog
+            self._show_presets_dialog(presets)
+            
+        except Exception as ex:
+            print(f"_load_presets_from_database error: {ex}")
+            self._show_error(f"Failed to load presets: {str(ex)}")
+    
+    def _show_presets_dialog(self, presets):
+        """Show available presets in a dialog for selection"""
+        def load_preset(preset):
+            try:
+                self.template_name_field.value = preset.get('name', '')
+                self.default_title_field.value = preset.get('title', '')
+                self.default_description_field.value = preset.get('description', '')
+                self.default_tags_field.value = preset.get('tags', '')
+                self.default_visibility_dropdown.value = preset.get('visibility', 'unlisted')
+                self.default_kids_checkbox.value = preset.get('made_for_kids', False)
+                self.page.update()
+                
+                dialog.open = False
+                self.page.update()
+                self._show_success(f"Preset '{preset.get('name')}' loaded!")
+            except Exception as ex:
+                self._show_error(f"Failed to load preset: {str(ex)}")
+        
+        def delete_preset(preset, dialog_ref):
+            try:
+                from access_control.supabase_service import get_supabase_service
+                supabase = get_supabase_service()
+                
+                if supabase.delete_preset(preset.get('id')):
+                    self._show_success(f"Preset '{preset.get('name')}' deleted!")
+                    dialog_ref.open = False
+                    self.page.update()
+                else:
+                    self._show_error("Failed to delete preset")
+            except Exception as ex:
+                self._show_error(f"Error deleting preset: {str(ex)}")
+        
+        # Create preset list
+        preset_items = []
+        for preset in presets:
+            preset_name = preset.get('name', 'Unknown')
+            preset_items.append(
+                ft.Container(
+                    content=ft.Row([
+                        ft.Column([
+                            ft.Text(preset_name, size=14, weight=ft.FontWeight.BOLD),
+                            ft.Text(preset.get('tags', 'No tags'), size=10, color=ft.Colors.GREY_400),
+                        ], spacing=2, expand=True),
+                        ft.ElevatedButton(
+                            "Load",
+                            icon=ft.Icons.CHECK_CIRCLE,
+                            on_click=lambda e, p=preset: load_preset(p),
+                            bgcolor=ft.Colors.GREEN_700,
+                            color=ft.Colors.WHITE,
+                            width=100,
+                        ),
+                        ft.IconButton(
+                            ft.Icons.DELETE,
+                            icon_color=ft.Colors.RED_400,
+                            on_click=lambda e, p=preset, d=None: delete_preset(p, dialog),
+                            tooltip="Delete preset"
+                        ),
+                    ], spacing=10),
+                    padding=10,
+                    bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+                    border_radius=8,
+                    border=ft.border.all(1, ft.Colors.with_opacity(0.2, "#555555")),
+                )
+            )
+        
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.CLOUD_DOWNLOAD, color=ft.Colors.PURPLE_400),
+                ft.Text(f"Your Cloud Presets ({len(presets)})", size=16)
+            ], spacing=10),
+            content=ft.Container(
+                content=ft.Column(
+                    preset_items + [ft.Container(height=10)],
+                    spacing=8,
+                    scroll=ft.ScrollMode.AUTO
+                ),
+                width=600,
+                height=400,
+            ),
+            actions=[
+                ft.TextButton("Close", on_click=lambda e: self._close_dialog(dialog))
+            ]
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _close_dialog(self, dialog):
+        """Close a dialog"""
+        dialog.open = False
+        self.page.update()

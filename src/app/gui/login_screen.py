@@ -19,75 +19,65 @@ class LoginScreen:
         # UI components
         self.google_login_button = None
         self.guest_button = None
-        self.loading_ring = None
+        self.google_loading_ring = None
+        self.guest_loading_ring = None
         self.status_text = None
         
         # Login state
         self.is_logging_in = False
+        self.is_guest_logging_in = False
+        
+        # Auth overlay
+        self.auth_overlay = None
+        self.auth_overlay_visible = False
     
     def build(self) -> ft.Container:
         """Build and return the login screen UI"""
-        
         # App title
         title = ft.Text(
             "📽️ Video Merger App",
-            size=32,
+            size=36,
             weight=ft.FontWeight.BOLD,
             color=ft.Colors.BLUE_400,
             text_align=ft.TextAlign.CENTER
         )
         
         subtitle = ft.Text(
-            "Choose how you want to continue",
-            size=16,
+            "Merge, edit, and upload your videos seamlessly",
+            size=14,
             color=ft.Colors.GREY_400,
             text_align=ft.TextAlign.CENTER
         )
         
-        # Guest login section
-        guest_section = ft.Container(
-            content=ft.Column([
-                ft.Icon(ft.Icons.PERSON, size=40, color=ft.Colors.GREY_400),
-                ft.Text("Continue as Guest", size=18, weight=ft.FontWeight.BOLD),
-                ft.Text(
-                    "• Limited to 5 merges per day\n• Videos have watermark\n• Ads enabled\n• No upload to YouTube",
-                    size=12,
-                    color=ft.Colors.GREY_500,
-                    text_align=ft.TextAlign.CENTER
-                ),
-                ft.ElevatedButton(
-                    "Continue as Guest",
-                    icon=ft.Icons.PERSON,
-                    on_click=self._handle_guest_login,
-                    style=ft.ButtonStyle(
-                        bgcolor=ft.Colors.GREY_700,
-                        color=ft.Colors.WHITE,
-                        padding=ft.padding.symmetric(horizontal=20, vertical=10)
-                    )
-                )
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10),
-            padding=20,
-            border=ft.border.all(1, ft.Colors.GREY_600),
-            border_radius=10,
-            bgcolor=ft.Colors.GREY_900
-        )
-        
-        # Google login section - OAuth button only
+        # Google login button
         self.google_login_button = ft.ElevatedButton(
             "Sign in with Google",
             icon=ft.Icons.LOGIN,
             on_click=self._handle_google_login,
             style=ft.ButtonStyle(
-                bgcolor=ft.Colors.BLUE_600,
+                bgcolor={ft.ControlState.DEFAULT: ft.Colors.LIGHT_BLUE_700, ft.ControlState.HOVERED: ft.Colors.LIGHT_BLUE_600},
                 color=ft.Colors.WHITE,
-                padding=ft.padding.symmetric(horizontal=30, vertical=15)
+                padding=ft.padding.symmetric(horizontal=40, vertical=18)
             ),
-            width=250,
-            height=50
+            width=300,
+            height=55
         )
         
-        # Loading indicator
-        self.loading_ring = ft.ProgressRing(visible=False, width=20, height=20)
+        # Google loading indicator
+        self.google_loading_ring = ft.ProgressRing(visible=False, width=20, height=20)
+        
+        # Guest loading indicator
+        self.guest_loading_ring = ft.ProgressRing(visible=False, width=16, height=16)
+        
+        # Guest text button
+        self.guest_button = ft.TextButton(
+            "Or continue without signing in",
+            on_click=self._handle_guest_login,
+            style=ft.ButtonStyle(
+                color=ft.Colors.GREY_400,
+                padding=ft.padding.symmetric(horizontal=20, vertical=10)
+            )
+        )
         
         # Status text
         self.status_text = ft.Text(
@@ -98,63 +88,73 @@ class LoginScreen:
             visible=False
         )
         
-        google_section = ft.Container(
+        # Main login container
+        login_card = ft.Container(
             content=ft.Column([
-                ft.Icon(ft.Icons.LOGIN, size=40, color=ft.Colors.BLUE_400),
-                ft.Text("Login with Google", size=18, weight=ft.FontWeight.BOLD),
+                ft.Text("Welcome", size=24, weight=ft.FontWeight.BOLD),
+                ft.Container(height=5),
                 ft.Text(
-                    "• Upload to YouTube\n• No watermark\n• Higher merge limits\n• Role-based features",
+                    "Sign in to upload to YouTube",
                     size=12,
                     color=ft.Colors.GREY_500,
                     text_align=ft.TextAlign.CENTER
                 ),
-                ft.Text(
-                    "Click below to authenticate with your Google account\nin your default browser (same as YouTube upload)",
-                    size=10,
-                    color=ft.Colors.CYAN_400,
-                    text_align=ft.TextAlign.CENTER
-                ),
+                ft.Container(height=25),
                 ft.Row([
-                    self.loading_ring,
+                    self.google_loading_ring,
                     self.google_login_button
                 ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 self.status_text,
-                self._build_previous_user_section()  # Add previous user section
-            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15),
-            padding=20,
-            border=ft.border.all(1, ft.Colors.GREY_600),
-            border_radius=10,
-            bgcolor=ft.Colors.GREY_900
+                ft.Container(height=15),
+                ft.Divider(color=ft.Colors.GREY_700, height=1),
+                ft.Container(height=5),
+                ft.Row([
+                    self.guest_loading_ring,
+                    self.guest_button
+                ], alignment=ft.MainAxisAlignment.CENTER, spacing=8),
+                self._build_previous_user_section()
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
+            padding=40,
+            border=ft.border.all(1, ft.Colors.GREY_700),
+            border_radius=15,
+            bgcolor=ft.Colors.with_opacity(0.95, "#1E1E1E"),
+            width=500,
+            shadow=ft.BoxShadow(
+                spread_radius=1,
+                blur_radius=15,
+                color=ft.Colors.with_opacity(0.3, "#000000"),
+                offset=ft.Offset(0, 4)
+            )
         )
         
         # Main layout
         main_content = ft.Column([
             title,
             subtitle,
-            ft.Container(height=20),  # Spacer
-            ft.Row([
-                guest_section,
-                ft.VerticalDivider(color=ft.Colors.GREY_600),
-                google_section
-            ], alignment=ft.MainAxisAlignment.CENTER, spacing=30),
-            ft.Container(height=20),  # Spacer
+            ft.Container(height=40),
+            login_card,
             ft.Text(
-                "Note: Google login uses YouTube OAuth (same as upload authentication)",
+                "Note: Google authentication uses YouTube OAuth for seamless video uploads",
                 size=10,
                 color=ft.Colors.GREY_600,
                 text_align=ft.TextAlign.CENTER
             )
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=15)
+        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10)
         
         return ft.Container(
             content=main_content,
             alignment=ft.alignment.center,
-            padding=40,
+            padding=ft.padding.only(left=40,right=40,bottom=40,top=15),
             expand=True
         )
     
     def _handle_guest_login(self, e):
-        """Handle guest login with Firebase tracking"""
+        """Handle guest login (local only, no database)"""
+        if self.is_guest_logging_in:
+            return
+        
+        self._set_guest_loading(True)
+        
         try:
             print("Guest login started")
             
@@ -162,7 +162,7 @@ class LoginScreen:
             guest_role = RoleManager.create_role(RoleType.GUEST)
             print(f"Guest role created: {guest_role.name}")
             
-            # Set session info (mock user session for guest)
+            # Set session info (local session only, no database)
             user_info = {
                 'email': 'guest@local',
                 'uid': f'guest_{int(__import__("time").time())}',  # Unique guest ID
@@ -171,24 +171,7 @@ class LoginScreen:
                 'provider': 'guest',
                 'authenticated': False
             }
-            print(f"User info prepared: {user_info}")
-            
-            # Optional: Track guest usage in Firebase (if available)
-            try:
-                from access_control.firebase_service import FirebaseService
-                firebase_service = FirebaseService()
-                
-                # Create a guest session record (optional)
-                guest_data = {
-                    **user_info,
-                    'session_started': __import__("datetime").datetime.utcnow().isoformat(),
-                    'guest_session': True
-                }
-                firebase_service.create_user(guest_data)
-                print("Guest session tracked in Firebase")
-                
-            except Exception as firebase_ex:
-                print(f"Firebase guest tracking failed (continuing): {firebase_ex}")
+            print(f"Guest session prepared (local only): {user_info}")
             
             # Call login completion callback
             if self.on_login_complete:
@@ -200,6 +183,8 @@ class LoginScreen:
         except Exception as ex:
             print(f"Guest login exception: {ex}")
             self._show_error(f"Guest login failed: {str(ex)}")
+        finally:
+            self._set_guest_loading(False)
     
     def _handle_google_login(self, e):
         """Handle Google OAuth login with Firebase integration"""
@@ -219,10 +204,14 @@ class LoginScreen:
             
             self._show_status("Opening browser for Google authentication...")
             
+            # Show the auth overlay immediately
+            self._show_auth_overlay()
+            
             # Get YouTube service - this will handle the real OAuth flow
             youtube_service = get_youtube_service()
             
             if not youtube_service or not youtube_service.credentials:
+                self._hide_auth_overlay()
                 self._show_error("Google authentication failed")
                 return
             
@@ -242,7 +231,7 @@ class LoginScreen:
                     "given_name": user_info_response.get('given_name', ''),
                     "family_name": user_info_response.get('family_name', ''),
                     "picture": user_info_response.get('picture', ''),
-                    "role": "normal",  # Default role for OAuth users
+                    "role": "free",  # Default role for OAuth users
                     "provider": "google",
                     "authenticated": True,
                     "google_id": user_info_response.get('id', ''),
@@ -255,7 +244,7 @@ class LoginScreen:
                 user_data = {
                     "email": "authenticated@gmail.com",
                     "name": "Google User",
-                    "role": "normal",
+                    "role": "free",
                     "provider": "google", 
                     "authenticated": True,
                     "uid": "unknown"
@@ -275,7 +264,7 @@ class LoginScreen:
                 if firebase_user_data:
                     # Update user with Firebase data (may have upgraded role, etc.)
                     user_data.update({
-                        "role": firebase_user_data.get("role", "normal"),
+                        "role": firebase_user_data.get("role", "free"),
                         "usage_count": firebase_user_data.get("usage_count", 0),
                         "daily_usage": firebase_user_data.get("daily_usage", 0),
                         "premium_until": firebase_user_data.get("premium_until"),
@@ -303,6 +292,9 @@ class LoginScreen:
             
             self._show_status("Authentication successful!")
             
+            # Hide overlay before callback
+            self._hide_auth_overlay()
+            
             # Call login completion callback
             if self.on_login_complete:
                 self.on_login_complete(user_data, role)
@@ -311,15 +303,17 @@ class LoginScreen:
                 
         except Exception as ex:
             print(f"OAuth error: {ex}")
+            # Hide overlay on error
+            self._hide_auth_overlay()
             self._show_error(f"Authentication failed: {str(ex)}")
             
         finally:
             self._set_loading(False)
     
     def _set_loading(self, loading: bool):
-        """Show/hide loading indicator"""
+        """Show/hide loading indicator for Google login"""
         self.is_logging_in = loading
-        self.loading_ring.visible = loading
+        self.google_loading_ring.visible = loading
         self.google_login_button.disabled = loading
         
         if loading:
@@ -327,6 +321,19 @@ class LoginScreen:
             self._hide_error()
         else:
             self.google_login_button.text = "Sign in with Google"
+        
+        self.page.update()
+    
+    def _set_guest_loading(self, loading: bool):
+        """Show/hide loading indicator for guest login"""
+        self.is_guest_logging_in = loading
+        self.guest_loading_ring.visible = loading
+        self.guest_button.disabled = loading
+        
+        if loading:
+            self.guest_button.text = "Loading..."
+        else:
+            self.guest_button.text = "Continue as Guest"
         
         self.page.update()
     
@@ -378,7 +385,6 @@ class LoginScreen:
         
         return ft.Container(
             content=ft.Column([
-                ft.Divider(color=ft.Colors.GREY_600),
                 ft.Text("Quick Login", size=12, color=ft.Colors.GREY_400),
                 previous_user_button
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
@@ -397,7 +403,7 @@ class LoginScreen:
         
         try:
             # Create role based on stored user data
-            role = RoleManager.create_role_by_name(last_user.get('role', 'normal'))
+            role = RoleManager.create_role_by_name(last_user.get('role', 'free'))
             
             # Call login completion callback
             if self.on_login_complete:
@@ -408,3 +414,105 @@ class LoginScreen:
         except Exception as ex:
             print(f"Previous user login error: {ex}")
             self._show_error(f"Failed to login as previous user: {str(ex)}")
+    
+    def _show_auth_overlay(self):
+        """Show fullscreen auth overlay with instructions"""
+        def close_overlay(e=None):
+            self._hide_auth_overlay()
+        
+        def retry_login(e):
+            """Retry Google login"""
+            self._hide_auth_overlay()
+            self._handle_google_login(e)
+        
+        # Create overlay content
+        overlay_content = ft.Column([
+            ft.Icon(ft.Icons.LOGIN, size=80, color=ft.Colors.BLUE_400),
+            
+            ft.Text(
+                "Google Authentication in Progress",
+                size=28,
+                weight=ft.FontWeight.BOLD,
+                color=ft.Colors.BLUE_400,
+                text_align=ft.TextAlign.CENTER
+            ),
+            
+            ft.Text(
+                "A browser window has opened for you to sign in with Google.",
+                size=16,
+                color=ft.Colors.GREY_300,
+                text_align=ft.TextAlign.CENTER
+            ),
+            
+            ft.Text(
+                "Once you've completed the authentication in your browser,\nthis app will automatically continue.",
+                size=14,
+                color=ft.Colors.GREY_400,
+                text_align=ft.TextAlign.CENTER,
+                italic=True
+            ),
+            
+            ft.Container(height=30),
+            
+            ft.ProgressRing(width=50, height=50, color=ft.Colors.BLUE_400),
+            
+            ft.Container(height=30),
+            
+            ft.Text(
+                "Waiting for authentication...",
+                size=12,
+                color=ft.Colors.GREY_500,
+                text_align=ft.TextAlign.CENTER
+            ),
+            
+            ft.Container(height=40),
+            
+            # Retry button
+            ft.ElevatedButton(
+                "Browser Didn't Open? Click to Retry",
+                icon=ft.Icons.REFRESH,
+                on_click=retry_login,
+                bgcolor=ft.Colors.ORANGE_700,
+                color=ft.Colors.WHITE,
+                width=300,
+                height=45
+            ),
+            
+            ft.Container(height=20),
+            
+            ft.TextButton(
+                "Cancel",
+                on_click=close_overlay,
+                style=ft.ButtonStyle(color=ft.Colors.GREY_400)
+            ),
+            
+        ], spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+        
+        # Create fullscreen overlay
+        self.auth_overlay = ft.Container(
+            content=ft.Column([
+                ft.Container(expand=True),
+                ft.Row([
+                    ft.Container(expand=True),
+                    overlay_content,
+                    ft.Container(expand=True),
+                ], expand=True),
+                ft.Container(expand=True),
+            ], expand=True),
+            bgcolor=ft.Colors.with_opacity(0.95, "#1A1A1A"),
+            expand=True
+        )
+        
+        self.page.overlay.append(self.auth_overlay)
+        self.auth_overlay_visible = True
+        self.page.update()
+    
+    def _hide_auth_overlay(self):
+        """Hide the auth overlay"""
+        if self.auth_overlay and self.auth_overlay_visible:
+            try:
+                self.page.overlay.remove(self.auth_overlay)
+                self.auth_overlay_visible = False
+                self.page.update()
+            except Exception as ex:
+                print(f"Error hiding auth overlay: {ex}")
