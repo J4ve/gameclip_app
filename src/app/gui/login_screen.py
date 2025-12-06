@@ -143,7 +143,7 @@ class LoginScreen:
         return ft.Container(
             content=main_content,
             alignment=ft.alignment.center,
-            padding=40,
+            padding=ft.padding.only(left=40,right=40,bottom=40,top=15),
             expand=True
         )
     

@@ -81,7 +81,12 @@ class SessionManager:
         self._sync_user_with_firebase(user_info, role)
     
     def _sync_user_with_firebase(self, user_info: Dict[str, Any], role: Role):
-        """Create or update user document in Firebase"""
+        """Create or update user document in Firebase (skips guest users)"""
+        # Don't sync guest users to Firebase
+        if role.role_type == RoleType.GUEST:
+            print("Guest user - skipping Firebase sync")
+            return
+        
         firebase_service = self._get_firebase_service()
         if not firebase_service or not firebase_service.is_available:
             print("Firebase not available - operating in local mode")
