@@ -171,39 +171,6 @@ class PremiumRole(Role):
             description="Premium user with full features, no ads, no watermark"
         )
 
-
-class DevRole(Role):
-    """Developer role - premium features plus debugging tools"""
-    
-    def __init__(self):
-        permissions = {
-            Permission.SAVE_VIDEO,
-            Permission.UPLOAD_VIDEO,
-            Permission.MERGE_VIDEOS,
-            Permission.NO_WATERMARK,
-            Permission.NO_ADS,
-            Permission.UNLIMITED_MERGES,
-            Permission.VIEW_LOGS,
-            Permission.ACCESS_DEBUG_TOOLS,
-        }
-        
-        # CONFIG_MARKER: Developer role limits configuration (unlimited by design)
-        limits = RoleLimits(
-            max_merge_count_per_day=-1,
-            max_video_length_minutes=-1,
-            max_file_size_mb=-1,
-            watermark_enabled=False,
-            ads_enabled=False
-        )
-        
-        super().__init__(
-            role_type=RoleType.DEV,
-            permissions=permissions,
-            limits=limits,
-            description="Developer with debug tools and logs access"
-        )
-
-
 class AdminRole(Role):
     """Admin role - all permissions including user management"""
     
@@ -247,7 +214,6 @@ class RoleManager:
         RoleType.GUEST: GuestRole,
         RoleType.FREE: FreeRole,
         RoleType.PREMIUM: PremiumRole,
-        RoleType.DEV: DevRole,
         RoleType.ADMIN: AdminRole,
     }
     
@@ -299,6 +265,6 @@ def get_role(role_name: str) -> Role:
 # Export commonly used items
 __all__ = [
     'Role', 'RoleType', 'Permission', 'RoleLimits',
-    'GuestRole', 'FreeRole', 'PremiumRole', 'DevRole', 'AdminRole',
+    'GuestRole', 'FreeRole', 'PremiumRole', 'AdminRole',
     'RoleManager', 'get_role'
 ]

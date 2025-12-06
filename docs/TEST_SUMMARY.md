@@ -12,7 +12,7 @@ Comprehensive pytest test suite for VideoMerger app core features with 124 test 
 
 ### ✅ test_roles.py (38 tests - 100% passing)
 Tests role-based access control (RBAC) system:
-- Role creation for all 5 tiers (guest, free, premium, dev, admin)
+- Role creation for all 5 tiers (guest, free, premium, admin)
 - Permission validation for 14 different permissions
 - Role limits and restrictions
 - Permission hierarchy enforcement
@@ -24,7 +24,6 @@ Tests role-based access control (RBAC) system:
 - `TestGuestRole` - Guest tier restrictions
 - `TestFreeRole` - Free tier features
 - `TestPremiumRole` - Premium tier benefits
-- `TestDevRole` - Developer permissions
 - `TestAdminRole` - Admin privileges
 - `TestRoleManager` - Role factory
 - `TestRoleHierarchy` - Permission escalation
