@@ -7,6 +7,8 @@ import flet_video
 from access_control.session import session_manager
 import os
 from datetime import datetime
+from pathlib import Path
+from app.video_core.video_metadata import VideoMetadata
 
 class ArrangementScreen:
     """Second screen: Arrange clips and preview"""
@@ -22,6 +24,7 @@ class ArrangementScreen:
         self.sort_by = "Name"
         self.sort_order = "Descending"  # New: Ascending/Descending
         self.locked_videos = set()  # Track locked video indices (premium feature)
+        self._metadata_cache = {}  # Cache metadata to avoid repeated extraction
         
     def build(self):
         """Build and return arrangement screen layout (Frame 2)"""
@@ -186,8 +189,13 @@ class ArrangementScreen:
             has_lock_feature = session_manager.is_premium() or session_manager.is_admin()
             
             for i, video_path in enumerate(self.videos):
-                video_name = video_path.split('/')[-1] if '/' in video_path else video_path.split('\\')[-1]
+                video_name = Path(video_path).name
                 is_locked = i in self.locked_videos
+                
+                # Get metadata from cache
+                if video_path not in self._metadata_cache:
+                    self._metadata_cache[video_path] = VideoMetadata(video_path)
+                metadata_text = self._metadata_cache[video_path].get_short_info()
                 
                 # Determine if move buttons should be enabled
                 can_move_up = i > 0 and not is_locked
@@ -262,14 +270,21 @@ class ArrangementScreen:
                     content=ft.Row([
                         drag_handle,
                         index_badge,
-                        ft.Text(
-                            video_name,
-                            color=ft.Colors.AMBER_100 if is_locked else ft.Colors.WHITE,
-                            expand=True,
-                            max_lines=1,
-                            overflow=ft.TextOverflow.ELLIPSIS,
-                            weight=ft.FontWeight.BOLD if is_locked else ft.FontWeight.NORMAL,
-                        ),
+                        ft.Column([
+                            ft.Text(
+                                video_name,
+                                color=ft.Colors.AMBER_100 if is_locked else ft.Colors.WHITE,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                                weight=ft.FontWeight.BOLD if is_locked else ft.FontWeight.NORMAL,
+                                size=12,
+                            ),
+                            ft.Text(
+                                metadata_text,
+                                color=ft.Colors.AMBER_200 if is_locked else ft.Colors.GREY_400,
+                                size=10,
+                            ),
+                        ], spacing=2, expand=True),
                         ft.Row(action_buttons, spacing=5),
                     ], spacing=10),
                     padding=10,
@@ -553,6 +568,13 @@ class ArrangementScreen:
         self.videos = videos or []
         self.selected_video_index = 0
         self.locked_videos.clear()  # Clear locks when new videos are loaded
+        self._metadata_cache.clear()  # Clear metadata cache for new video set
+        
+        # Pre-cache metadata for all videos (done once, in background if needed)
+        for video_path in self.videos:
+            if video_path not in self._metadata_cache:
+                self._metadata_cache[video_path] = VideoMetadata(video_path)
+        
         self._update_video_list()
         
         # Clear old cached preview files when videos are updated in arrangement screen

@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import os
 from access_control.session import session_manager
+from app.video_core.video_metadata import VideoMetadata, check_videos_compatibility
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -92,6 +93,13 @@ class SaveUploadScreen:
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
+        
+        # Check video compatibility
+        if self.videos:
+            is_compatible, issues = check_videos_compatibility(self.videos)
+            if not is_compatible and issues:
+                # Show compatibility warning
+                self._show_compatibility_warning(issues)
         
         # Clear old cached preview files when new videos are selected
         if self.video_processor is not None:
@@ -545,7 +553,7 @@ class SaveUploadScreen:
         )
     
     def _build_video_list(self):
-        """Build video list display"""
+        """Build video list display with metadata"""
         controls = []
         if not self.videos:
             controls.append(
@@ -554,6 +562,9 @@ class SaveUploadScreen:
         else:
             for i, video_path in enumerate(self.videos):
                 video_name = Path(video_path).name
+                metadata = VideoMetadata(video_path)
+                metadata_text = metadata.get_short_info()
+                
                 video_item = ft.Container(
                     content=ft.Row([
                         ft.Container(
@@ -568,13 +579,21 @@ class SaveUploadScreen:
                             border_radius=15,
                             alignment=ft.alignment.center,
                         ),
-                        ft.Text(
-                            video_name,
-                            color=ft.Colors.WHITE,
-                            expand=True,
-                            max_lines=1,
-                            overflow=ft.TextOverflow.ELLIPSIS
-                        ),
+                        ft.Column([
+                            ft.Text(
+                                video_name,
+                                color=ft.Colors.WHITE,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                                weight=ft.FontWeight.BOLD,
+                                size=12,
+                            ),
+                            ft.Text(
+                                metadata_text,
+                                color=ft.Colors.GREY_400,
+                                size=10,
+                            ),
+                        ], spacing=2, expand=True),
                     ], spacing=10),
                     padding=10,
                     bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
@@ -1070,3 +1089,52 @@ class SaveUploadScreen:
             self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
             self.page.snack_bar.open = True
             self.page.update()
+    
+    def _show_compatibility_warning(self, issues: list):
+        """Show warning dialog for incompatible videos"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE_400),
+                ft.Text("Video Compatibility Warning", color=ft.Colors.ORANGE_400),
+            ]),
+            content=ft.Column([
+                ft.Text(
+                    "The selected videos have different properties. For best results, videos should have:",
+                    size=12,
+                ),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text("• Same codec (e.g., H264, H265)", size=11, color=ft.Colors.CYAN_200),
+                        ft.Text("• Same resolution (e.g., 1920x1080)", size=11, color=ft.Colors.CYAN_200),
+                        ft.Text("• Same framerate (e.g., 30fps)", size=11, color=ft.Colors.CYAN_200),
+                    ], spacing=5),
+                    padding=ft.padding.only(left=10, top=10, bottom=10),
+                ),
+                ft.Divider(height=10),
+                ft.Text("Detected issues:", size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_300),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text(f"• {issue}", size=11, color=ft.Colors.ORANGE_200)
+                        for issue in issues[:5]  # Show first 5 issues
+                    ], spacing=3),
+                    padding=ft.padding.only(left=10),
+                    height=min(len(issues) * 20, 100),
+                ),
+                ft.Divider(height=10),
+                ft.Text(
+                    "⚠️ Merging may take longer as videos need re-encoding to match properties.",
+                    size=11,
+                    color=ft.Colors.YELLOW_300,
+                    italic=True,
+                ),
+            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
