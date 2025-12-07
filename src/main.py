@@ -42,15 +42,7 @@ def main(page: ft.Page):
             print("Page updated")
             
             # Show welcome message using overlay to ensure it appears
-            welcome_name = user_info.get('name') or user_info.get('email', 'Guest')
-            role_display = 'Free tier user' if role.name.lower() == 'free' else f'{role.name.title()} user'
-            snack_bar = ft.SnackBar(
-                content=ft.Text(f"Welcome, {welcome_name}! {role_display}"),
-                bgcolor=ft.Colors.GREEN_700,
-            )
-            page.overlay.append(snack_bar)
-            snack_bar.open = True
-            page.update()
+            MainWindow.show_welcome_message(page, user_info, role)
             print("Welcome message shown")
         except Exception as e:
             print(f"Error creating main window: {e}")
