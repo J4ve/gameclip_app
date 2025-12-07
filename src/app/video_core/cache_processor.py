@@ -74,7 +74,7 @@ class CacheProcessor:
             if completion_callback:
                 completion_callback(
                     True, 
-                    "Preview skipped - videos have different properties (codec/resolution/framerate). Use Save for final merge.", 
+                    "Preview skipped - videos have different properties (codec/resolution/framerate). Use \"Save Video\" for final merge.", 
                     None
                 )
             return None

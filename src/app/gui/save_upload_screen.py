@@ -67,12 +67,14 @@ class SaveUploadScreen:
         Path(self.cache_directory).mkdir(parents=True, exist_ok=True)
 
 
-        # Preview text label
+        # Preview text label and icon
         self.preview_text_label = ft.Text(
             "Preview will appear when ready",
             color=ft.Colors.GREY_400,
             size=12,
+            text_align=ft.TextAlign.CENTER,
         )
+        self.preview_icon = ft.Icon(ft.Icons.VIDEOCAM, size=48, color=ft.Colors.GREY_400)
 
     def _get_role_display_text(self, role_name: str) -> str:
         """Get user-friendly role display text"""
@@ -144,12 +146,13 @@ class SaveUploadScreen:
         cache_filename = f"preview_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         cache_path = str(Path(self.cache_directory) / cache_filename)
         
-        # Show merging status
-        if self.progress_text:
-            self.progress_text.value = "Creating preview..."
-            self.progress_text.visible = True
+        # Show merging status with generating icon
+        self.preview_icon.name = ft.Icons.VIDEO_SETTINGS
+        self.preview_icon.color = ft.Colors.ORANGE_400
+        self.preview_text_label.value = "Generating preview... 0%"
+        self.preview_text_label.visible = True
         if self.progress_bar:
-            self.progress_bar.visible = True
+            self.progress_bar.visible = False
         if self.page:
             self.page.update()
         
@@ -163,8 +166,9 @@ class SaveUploadScreen:
 
     def _update_preview_progress(self, percentage: int, message: str):
         """Update progress for preview merge"""
-        if self.progress_text:
-            self.preview_text_label.value = f"Preview: {message}"
+        if self.preview_text_label:
+            self.preview_text_label.value = f"Generating preview... {percentage}%"
+            self.preview_text_label.visible = True
         if self.page:
             self.page.update()
     
@@ -178,18 +182,21 @@ class SaveUploadScreen:
                 self.cached_preview_path = output_path
                 self._show_preview_video(output_path)
             else:
-                # Preview was skipped (mixed codecs) - show info message
-                self.preview_text_label.value = "Preview unavailable for mixed-codec videos.\nProceed to Save to see final merged video."
+                # Preview was skipped (mixed properties) - show info message with VIDEOCAM_OFF icon
+                self.preview_icon.name = ft.Icons.VIDEOCAM_OFF
+                self.preview_icon.color = ft.Colors.ORANGE_400
+                self.preview_text_label.value = "Preview unavailable\n" + message
                 self.preview_text_label.visible = True
                 if self.page:
                     self.page.update()
         else:
-            # Preview failed
-            if self.progress_text:
-                self.progress_text.value = "Preview unavailable"
-                self.progress_text.visible = False
+            # Preview failed - show VIDEOCAM_OFF icon
+            self.preview_icon.name = ft.Icons.VIDEOCAM_OFF
+            self.preview_icon.color = ft.Colors.RED_400
+            self.preview_text_label.value = "Preview unavailable\n" + message
+            self.preview_text_label.visible = True
         
-        # Hide progress
+        # Hide progress bar
         if self.progress_bar:
             self.progress_bar.visible = False
         if self.page:
@@ -432,11 +439,18 @@ class SaveUploadScreen:
         video_list_height = min(max(num_videos * 40, 80), 200)
 
 
-        # Preview container
-        preview_content = ft.Column([
-            ft.Icon(ft.Icons.VIDEOCAM, size=48, color=ft.Colors.GREY_400),
-            self.preview_text_label,
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+        # Preview container - use the dynamic icon with styled container
+        preview_content = ft.Container(
+            content=ft.Column([
+                self.preview_icon,
+                ft.Container(
+                    content=self.preview_text_label,
+                    padding=ft.padding.only(left=50,right=50,top=20,bottom=20),
+                    border_radius=5,
+                ),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=15),
+            padding=20,
+        )
         
         if self.cached_preview_path:
             preview_content = ft.Video(
