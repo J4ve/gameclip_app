@@ -5,6 +5,7 @@ Selection Screen - Video selection (Step 1)
 import flet as ft
 from configs.config import Config
 from pathlib import Path
+from app.video_core.video_metadata import VideoMetadata
 
 
 class SelectionScreen:
@@ -33,17 +34,27 @@ class SelectionScreen:
                 if file_ext in Config.SUPPORTED_VIDEO_FORMATS:
                     if file_path not in self.selected_files:
                         self.selected_files.append(file_path)
+                        
+                        # Get metadata
+                        metadata = VideoMetadata(file_path)
+                        metadata_text = metadata.get_short_info()
+                        
                         # Add to visual list
                         self.file_list.controls.append(
-                            ft.Row([
-                                ft.Icon(ft.Icons.VIDEO_FILE, size=16),
-                                ft.Text(file.name, size=12, expand=True),
-                                ft.IconButton(
-                                    icon=ft.Icons.CLOSE,
-                                    icon_size=16,
-                                    on_click=lambda _, path=file_path: self.remove_file(path)
-                                ),
-                            ])
+                            ft.Column([
+                                ft.Row([
+                                    ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                                    ft.Column([
+                                        ft.Text(file.name, size=12, weight=ft.FontWeight.BOLD),
+                                        ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                                    ], spacing=2, expand=True),
+                                    ft.IconButton(
+                                        icon=ft.Icons.CLOSE,
+                                        icon_size=16,
+                                        on_click=lambda _, path=file_path: self.remove_file(path)
+                                    ),
+                                ]),
+                            ], spacing=5)
                         )
                 else:
                     # Show error for invalid format
@@ -66,19 +77,28 @@ class SelectionScreen:
         """Remove file from selection"""
         if file_path in self.selected_files:
             self.selected_files.remove(file_path)
-            # Rebuild file list display
-            self.file_list.controls = [
-                ft.Row([
-                    ft.Icon(ft.Icons.VIDEO_FILE, size=16),
-                    ft.Text(Path(f).name, size=12, expand=True),
-                    ft.IconButton(
-                        icon=ft.Icons.CLOSE,
-                        icon_size=16,
-                        on_click=lambda _, path=f: self.remove_file(path)
-                    ),
-                ])
-                for f in self.selected_files
-            ]
+            # Rebuild file list display with metadata
+            self.file_list.controls = []
+            for f in self.selected_files:
+                metadata = VideoMetadata(f)
+                metadata_text = metadata.get_short_info()
+                
+                self.file_list.controls.append(
+                    ft.Column([
+                        ft.Row([
+                            ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                            ft.Column([
+                                ft.Text(Path(f).name, size=12, weight=ft.FontWeight.BOLD),
+                                ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                            ], spacing=2, expand=True),
+                            ft.IconButton(
+                                icon=ft.Icons.CLOSE,
+                                icon_size=16,
+                                on_click=lambda _, path=f: self.remove_file(path)
+                            ),
+                        ]),
+                    ], spacing=5)
+                )
             
             # Toggle visibility when no files left
             if self.files_display and self.select_zone_container:
