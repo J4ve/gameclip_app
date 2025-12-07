@@ -113,18 +113,16 @@ class ConfigTab:
             content=ft.Column([
                 title_container,
                 ft.Divider(),
-                
                 account_section,
                 ft.Divider(),
-                
                 templates_section,
                 ft.Divider(),
-                
                 settings_section,
-                
             ], spacing=20, scroll=ft.ScrollMode.AUTO),
             padding=20,
-            expand=True
+            expand=True,
+            width=900,
+            height=700
         )
     
     def _build_authenticated_config_with_toggle(self):
@@ -167,18 +165,16 @@ class ConfigTab:
                     toggle_button,
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Divider(),
-                
                 account_section,
                 ft.Divider(),
-                
                 templates_section,
                 ft.Divider(),
-                
                 settings_section,
-                
             ], spacing=20, scroll=ft.ScrollMode.AUTO),
             padding=20,
-            expand=True
+            expand=True,
+            width=900,
+            height=700
         )
     
     def _build_guest_config(self):
@@ -246,18 +242,16 @@ class ConfigTab:
             content=ft.Column([
                 title_container,
                 ft.Divider(),
-                
                 account_section,
                 ft.Divider(),
-                
                 login_suggestion,
                 ft.Divider(),
-                
                 settings_section,
-                
             ], spacing=20, scroll=ft.ScrollMode.AUTO),
             padding=20,
-            expand=True
+            expand=True,
+            width=900,
+            height=700
         )
     
     def _handle_admin_click(self, e):
@@ -392,7 +386,7 @@ class ConfigTab:
                 ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), width=100),
                 ft.Container(ft.Text("Last Login", weight=ft.FontWeight.BOLD, size=12), width=150),
                 ft.Container(ft.Text("Status", weight=ft.FontWeight.BOLD, size=12), width=80),
-                ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=120),
+                ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=150),
             ], spacing=10),
             padding=ft.padding.only(left=10, right=10)
         )
@@ -416,25 +410,23 @@ class ConfigTab:
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 ft.Text("User Management & Role Administration", size=14, color=ft.Colors.GREY_400),
                 ft.Divider(),
-                
                 add_user_form,
                 ft.Divider(),
-                
                 ft.Row([
                     self.admin_search_field,
                     self.admin_filter_dropdown,
                     self.admin_refresh_button,
                     self.admin_loading_container,
                 ], spacing=10),
-                
                 ft.Divider(),
                 table_header,
                 ft.Divider(),
                 self.admin_users_table,
-                
-            ], spacing=15, scroll=ft.ScrollMode.AUTO, expand=True),
+            ], spacing=15, expand=True, scroll=ft.ScrollMode.AUTO),
             padding=20,
-            expand=True
+            expand=True,
+            width=900,
+            height=700
         )
     
     def _build_account_section(self):
