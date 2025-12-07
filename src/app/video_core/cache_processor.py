@@ -82,6 +82,7 @@ class CacheProcessor:
         completion_callback: Optional[Callable]
     ):
         """Internal thread function for caching"""
+        print("[CACHE_PROCESSOR] Starting cache thread")
         self.is_caching = True
         
         try:
@@ -90,70 +91,53 @@ class CacheProcessor:
             cache_dir.mkdir(parents=True, exist_ok=True)
             
             if progress_callback:
-                progress_callback(10, "Preparing cache merge...")
+                progress_callback(30, "Creating preview...")
             
             # Create concat file
             concat_file = self._create_concat_file(video_paths)
             
-            if progress_callback:
-                progress_callback(20, "Building merge stream...")
-            
-            # Get video dimensions for downscaling calculation
-            width, height = self._get_video_dimensions(video_paths[0])
-            downscaled_width, downscaled_height = self._calculate_downscale_dims(width, height)
-            
-            if progress_callback:
-                progress_callback(30, f"Caching at {downscaled_width}x{downscaled_height}...")
-            
             # Build FFmpeg command for cached video
-            cmd = self._build_ffmpeg_command(
-                concat_file,
-                cache_path,
-                downscaled_width,
-                downscaled_height
-            )
+            cmd = self._build_ffmpeg_command(concat_file, cache_path)
             
-            # Execute FFmpeg
+            # Execute FFmpeg - must read stderr or it will block
             process = subprocess.Popen(
                 cmd,
-                stdout=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
             )
             
             self.current_process = process
             
-            # Track progress
-            total_duration = self._get_total_duration(video_paths)
-            
-            for line in process.stderr:
-                if progress_callback and "time=" in line:
-                    current_time = self._parse_time_from_ffmpeg(line)
-                    if current_time and total_duration:
-                        percentage = min(int((current_time / total_duration) * 60) + 30, 90)
-                        progress_callback(percentage, f"Caching... {percentage}%")
+            # Consume stderr to prevent blocking (but don't process it)
+            for _ in process.stderr:
+                pass
             
             # Wait for process
             process.wait()
             
             # Clean up concat file
-            if os.path.exists(concat_file):
-                os.remove(concat_file)
+            try:
+                if os.path.exists(concat_file):
+                    import time
+                    time.sleep(0.1)
+                    os.remove(concat_file)
+            except:
+                pass
+            
+            output_file = f"{cache_path}.mp4"
             
             if process.returncode == 0:
-                output_file = f"{cache_path}.mp4"
-                
                 if progress_callback:
-                    progress_callback(100, "Cache complete!")
+                    progress_callback(100, "Preview ready!")
                 
                 if completion_callback:
-                    completion_callback(True, f"Cache created: {output_file}", output_file)
+                    completion_callback(True, f"Preview ready", output_file)
                 
                 self.cached_files.append(output_file)
             else:
-                error_output = process.stderr.read() if hasattr(process.stderr, 'read') else "Unknown error"
                 if completion_callback:
-                    completion_callback(False, f"Cache process failed: {error_output}", None)
+                    completion_callback(False, "Preview failed", None)
                     
         except Exception as e:
             if completion_callback:
@@ -162,29 +146,37 @@ class CacheProcessor:
             self.is_caching = False
             self.current_process = None
     
-    def _build_ffmpeg_command(self, concat_file: str, cache_path: str, width: int, height: int) -> list:
-        """Build FFmpeg command for caching with downscaling using fMP4"""
+    def _build_ffmpeg_command(self, concat_file: str, cache_path: str) -> list:
+        """
+        Build FFmpeg command - FAST re-encoding with consistency
+        Uses ultrafast preset with minimal processing for speed
+        """
         output_file = f"{cache_path}.mp4"
         
-        scale_filter = f"scale={width}:{height}" if self.settings.downscale_enabled else "null"
-        
-        # fMP4 (fragmented MP4) allows preview while file is still being written
-        # -movflags faststart writes stream headers early for progressive download
-        cmd = [
+        # Must re-encode for compatibility, but use absolute fastest settings
+        return [
             "ffmpeg",
             "-f", "concat",
             "-safe", "0",
             "-i", concat_file,
-            "-vf", scale_filter,  # Scale/downscale video
             "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-tune", "zerolatency",  # Minimal buffering
+            "-crf", "35",  # Very low quality = very fast
+            "-g", "250",  # Huge GOP = fewer keyframes
+            "-sc_threshold", "0",  # Disable scene detection
+            "-bf", "0",  # No B-frames
+            "-refs", "1",  # Single reference frame
             "-c:a", "aac",
-            "-preset", self.settings.preset,  # Fast encoding for cache
-            "-movflags", "faststart",  # Write stream headers early (fMP4 compatible)
+            "-b:a", "64k",  # Very low audio bitrate
+            "-ar", "22050",  # Half sample rate
+            "-ac", "1",  # Mono audio
+            "-pix_fmt", "yuv420p",
+            "-r", "24",  # Lower framerate
+            "-threads", "0",
             "-y",
             output_file
         ]
-        
-        return cmd
     
     def _calculate_downscale_dims(self, original_width: int, original_height: int) -> tuple:
         """Calculate downscaled dimensions maintaining aspect ratio"""
