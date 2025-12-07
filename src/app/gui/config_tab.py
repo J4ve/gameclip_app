@@ -121,7 +121,7 @@ class ConfigTab:
             ], spacing=20, scroll=ft.ScrollMode.AUTO),
             padding=20,
             expand=True,
-            width=900,
+            width=1100,
             height=700
         )
     
@@ -173,7 +173,7 @@ class ConfigTab:
             ], spacing=20, scroll=ft.ScrollMode.AUTO),
             padding=20,
             expand=True,
-            width=900,
+            width=1100,
             height=700
         )
     
@@ -377,19 +377,16 @@ class ConfigTab:
             alignment=ft.alignment.center
         )
         
-        # Users table header with fixed widths to match row layout
-        table_header = ft.Container(
-            content=ft.Row([
-                ft.Container(width=50),  # Avatar space
-                ft.Container(ft.Text("Email", weight=ft.FontWeight.BOLD, size=12), width=200),
-                ft.Container(ft.Text("Name", weight=ft.FontWeight.BOLD, size=12), width=200),
-                ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), width=100),
-                ft.Container(ft.Text("Last Login", weight=ft.FontWeight.BOLD, size=12), width=150),
-                ft.Container(ft.Text("Status", weight=ft.FontWeight.BOLD, size=12), width=80),
-                ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=150),
-            ], spacing=10),
-            padding=ft.padding.only(left=10, right=10)
-        )
+        # Users table header with expand to use full width
+        table_header = ft.Row([
+            ft.Container(width=50),  # Avatar space
+            ft.Container(ft.Text("Email", weight=ft.FontWeight.BOLD, size=12), expand=2),
+            ft.Container(ft.Text("Name", weight=ft.FontWeight.BOLD, size=12), expand=2),
+            ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), expand=1),
+            ft.Container(ft.Text("Last Login", weight=ft.FontWeight.BOLD, size=12), expand=1),
+            ft.Container(ft.Text("Status", weight=ft.FontWeight.BOLD, size=12), expand=1),
+            ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=150),
+        ], spacing=8, expand=True)
         
         # Users table content
         self.admin_users_table = ft.Column(
@@ -425,7 +422,7 @@ class ConfigTab:
             ], spacing=15, expand=True, scroll=ft.ScrollMode.AUTO),
             padding=20,
             expand=True,
-            width=900,
+            width=1100,
             height=700
         )
     
@@ -1132,22 +1129,23 @@ class ConfigTab:
         return ft.Container(
             content=ft.Row([
                 ft.Container(user_avatar, width=50),
-                ft.Container(ft.Text(email, size=12, overflow=ft.TextOverflow.ELLIPSIS), width=200),
-                ft.Container(name_display, width=200),
+                ft.Container(ft.Text(email, size=11, overflow=ft.TextOverflow.ELLIPSIS), expand=2),
+                ft.Container(name_display, expand=2),
                 ft.Container(
                     ft.Container(
-                        content=ft.Text(role.title(), size=11, weight=ft.FontWeight.BOLD),
+                        content=ft.Text(role.title(), size=10, weight=ft.FontWeight.BOLD),
                         bgcolor=self._get_role_color(role),
-                        padding=5,
-                        border_radius=5,
+                        padding=4,
+                        border_radius=4,
                     ),
-                    width=100
+                    expand=1,
+                    alignment=ft.alignment.center,
                 ),
-                ft.Container(ft.Text(str(last_login), size=11, color=ft.Colors.GREY_400, overflow=ft.TextOverflow.ELLIPSIS), width=150),
-                ft.Container(ft.Text(status_text, size=11, color=status_color), width=80),
-                ft.Container(ft.Row([role_button, delete_button], spacing=5), width=120),
-            ], spacing=10),
-            padding=10,
+                ft.Container(ft.Text(str(last_login), size=10, color=ft.Colors.GREY_400, overflow=ft.TextOverflow.ELLIPSIS), expand=1),
+                ft.Container(ft.Text(status_text, size=10, color=status_color), expand=1),
+                ft.Container(ft.Row([role_button, delete_button], spacing=2, tight=True), width=150),
+            ], spacing=8, tight=True, expand=True),
+            padding=8,
             border=ft.border.all(1, ft.Colors.GREY_800 if not is_super_admin else ft.Colors.YELLOW_700),
             border_radius=5,
             bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.YELLOW_400) if is_super_admin else None,

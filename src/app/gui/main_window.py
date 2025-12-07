@@ -466,7 +466,7 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=900,
+                width=1100,
                 height=650,
             ),
             actions=actions,
