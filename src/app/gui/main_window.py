@@ -9,7 +9,12 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
+from .admin_dashboard import AdminDashboardScreen
 from access_control.session import session_manager
+from access_control.roles import Permission
+import sys
+import platform
+from datetime import datetime
 
 
 class MainWindow:
@@ -23,6 +28,10 @@ class MainWindow:
         self.selection_screen = SelectionScreen(page=self.page) #selection screen
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
         self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+        
+        # Admin dashboard (only initialized if user has permission)
+        self.admin_dashboard = None
+        self.current_view = "wizard"  # "wizard" or "admin"
 
         # User info components
         self.user_info_text = None
@@ -96,6 +105,8 @@ class MainWindow:
     def setup_page(self):
         """Configure page settings"""
         self.page.title = Config.APP_TITLE
+        self.page.window.width = Config.APP_WIDTH
+        self.page.window.height = Config.APP_HEIGHT
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.bgcolor = ft.Colors.with_opacity(0.95, "#272822")  # Monokai-like dark background
         self.page.padding = 0
@@ -190,18 +201,20 @@ class MainWindow:
         # Show user's name if available, otherwise fall back to email
         display_name = user_info.get('name') or user_info.get('email', 'User')
         
-        # Profile button with user photo and name
+        # Profile button with user photo and name - only show profile image for authenticated users
         user_picture_url = user_info.get('picture', '')
+        is_guest = session_manager.is_guest
         
-        if user_picture_url:
-            # User has profile picture (Google OAuth)
+        if user_picture_url and not is_guest:
+            # Authenticated user with profile picture - show image only
             profile_image = ft.CircleAvatar(
                 foreground_image_src=user_picture_url,
+                content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),  # Loading/fallback icon
                 radius=16,
                 bgcolor=ft.Colors.BLUE_700
             )
         else:
-            # Guest or no picture - use icon
+            # Guest user or no picture - use icon only for guests
             profile_image = ft.CircleAvatar(
                 content=ft.Icon(ft.Icons.PERSON, size=20, color=ft.Colors.WHITE),
                 radius=16,
@@ -222,6 +235,8 @@ class MainWindow:
             ink=True,
             animate=ft.Animation(100, "easeOut")
         )
+        
+        # Admin dashboard button removed from main window (now in config tab)
         
         user_section = ft.Container(
             content=self.profile_button,
@@ -293,24 +308,42 @@ class MainWindow:
             top=20,
         )
 
-        stack_children = [
-            ft.Column(
-                [
-                    stepper,
-                    ft.Divider(),
-                    content,
-                ],
+        # Check if we should show admin dashboard or wizard
+        if self.current_view == "admin":
+            # Show admin dashboard instead of wizard
+            if self.admin_dashboard is None:
+                self.admin_dashboard = AdminDashboardScreen(self.page)
+            # Always reload users when switching to admin view
+            self.admin_dashboard.load_users()
+            admin_content = self.admin_dashboard.build()
+            stack_children = [
+                admin_content,
+                user_section,
+            ]
+            return ft.Stack(
+                stack_children,
                 expand=True,
-            ),
-            self.next_button,  # Fixed position overlay
-            user_section,  # User info at top right
-        ]
-        if self.current_step > 0:
-            stack_children.append(self.back_button)  # Show back button only if not at first step
-        return ft.Stack(
-            stack_children,
-            expand=True,
-        )
+            )
+        else:
+            # Show normal wizard view
+            stack_children = [
+                ft.Column(
+                    [
+                        stepper,
+                        ft.Divider(),
+                        content,
+                    ],
+                    expand=True,
+                ),
+                self.next_button,  # Fixed position overlay
+                user_section,  # User info at top right
+            ]
+            if self.current_step > 0:
+                stack_children.append(self.back_button)  # Show back button only if not at first step
+            return ft.Stack(
+                stack_children,
+                expand=True,
+            )
     
     def _handle_logout(self, e):
         print("logout clicked")
@@ -355,8 +388,7 @@ class MainWindow:
                 
                 # Show welcome message
                 snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome back, {user_info.get('name') or user_info.get('email', 'Guest')}!"),
-                    action="OK"
+                    content=ft.Text(f"Welcome, {user_info.get('name') or user_info.get('email', 'Guest')}!")
                 )
                 self.page.overlay.append(snack_bar)
                 snack_bar.open = True
@@ -434,8 +466,8 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=800,
-                height=600,
+                width=900,
+                height=650,
             ),
             actions=actions,
             actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -443,4 +475,15 @@ class MainWindow:
         
         self.page.overlay.append(dialog)
         dialog.open = True
+        self.page.update()
+    
+    def _toggle_admin_dashboard(self, e):
+        """Toggle between wizard and admin dashboard views"""
+        if self.current_view == "wizard":
+            self.current_view = "admin"
+        else:
+            self.current_view = "wizard"
+        
+        # Rebuild the page
+        self.page.controls = [self.build()]
         self.page.update()

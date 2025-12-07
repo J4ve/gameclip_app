@@ -3,11 +3,12 @@ from app.gui import MainWindow
 from app.gui.login_screen import LoginScreen
 from configs.config import Config
 from access_control.session import session_manager
+from configs.config import Config
 
 
 def main(page: ft.Page):
     """Main application entry point with authentication"""
-    page.title = "Video Merger App"
+    page.title = Config.APP_TITLE
     page.theme_mode = ft.ThemeMode.DARK
     page.window.width = Config.APP_WIDTH
     page.window.height = Config.APP_HEIGHT
@@ -40,13 +41,17 @@ def main(page: ft.Page):
             page.update()
             print("Page updated")
             
-            # Show welcome message
+            # Show welcome message using overlay to ensure it appears
+            welcome_name = user_info.get('name') or user_info.get('email', 'Guest')
+            role_display = 'Free tier user' if role.name.lower() == 'free' else f'{role.name.title()} user'
             snack_bar = ft.SnackBar(
-                content=ft.Text(f"Welcome, {user_info.get('email', 'Guest')}! {'Free tier user' if role.name.lower() == 'free' else f'{role.name.title()} user'}"),
-                action="OK"
+                content=ft.Text(f"Welcome, {welcome_name}! {role_display}"),
+                bgcolor=ft.Colors.GREEN_700,
             )
+            page.overlay.append(snack_bar)
             snack_bar.open = True
             page.update()
+            print("Welcome message shown")
         except Exception as e:
             print(f"Error creating main window: {e}")
             # Show error message

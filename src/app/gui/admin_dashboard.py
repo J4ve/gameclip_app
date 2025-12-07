@@ -13,6 +13,7 @@ import flet as ft
 from access_control.session import session_manager
 from access_control.roles import Permission
 from access_control.firebase_service import get_firebase_service
+from configs.config import Config
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
@@ -75,6 +76,51 @@ class AdminDashboardScreen:
     
     def build(self) -> ft.Container:
         """Build the admin dashboard UI"""
+        
+        # Add/Update User Form
+        self.new_user_email = ft.TextField(
+            label="Email address",
+            hint_text="user@example.com",
+            prefix_icon=ft.Icons.EMAIL,
+            expand=True,
+            width=300
+        )
+        
+        self.new_user_role = ft.Dropdown(
+            label="Role",
+            options=[
+                ft.dropdown.Option("free", "Free"),
+                ft.dropdown.Option("premium", "Premium"),
+                ft.dropdown.Option("admin", "Admin"),
+            ],
+            value="free",
+            width=150
+        )
+        
+        add_user_button = ft.ElevatedButton(
+            "Add/Update User",
+            icon=ft.Icons.PERSON_ADD,
+            on_click=self._add_or_update_user,
+            bgcolor=ft.Colors.GREEN_700,
+            color=ft.Colors.WHITE
+        )
+        
+        add_user_form = ft.Container(
+            content=ft.Column([
+                ft.Text("Add or Update User", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.GREEN_400),
+                ft.Text("Enter an email and role. If user exists, their role will be updated.", size=12, color=ft.Colors.GREY_400),
+                ft.Row([
+                    self.new_user_email,
+                    self.new_user_role,
+                    add_user_button
+                ], spacing=10, alignment=ft.MainAxisAlignment.START),
+            ], spacing=10),
+            padding=15,
+            bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+            border_radius=10,
+            border=ft.border.all(1, ft.Colors.GREEN_700),
+        )
+        
         # Search and filter controls
         self.search_field = ft.TextField(
             label="Search users (email, name)",
@@ -90,7 +136,6 @@ class AdminDashboardScreen:
                 ft.dropdown.Option("guest", "Guest"),
                 ft.dropdown.Option("free", "Free"),
                 ft.dropdown.Option("premium", "Premium"),
-                ft.dropdown.Option("dev", "Developer"),
                 ft.dropdown.Option("admin", "Admin"),
             ],
             value="all",
@@ -102,21 +147,37 @@ class AdminDashboardScreen:
             "Refresh",
             icon=ft.Icons.REFRESH,
             on_click=self._refresh_users,
-            bgcolor=ft.Colors.BLUE_700
+            bgcolor=ft.Colors.BLUE_700,
+            color=ft.Colors.WHITE,
+            style=ft.ButtonStyle(
+                bgcolor={
+                    ft.ControlState.DEFAULT: ft.Colors.BLUE_700,
+                    ft.ControlState.HOVERED: ft.Colors.BLUE_600,
+                },
+            )
         )
         
-        # Loading indicator
-        self.loading_indicator = ft.ProgressRing(visible=False)
+        # Loading indicator - wrapped in container to prevent layout shift
+        self.loading_indicator = ft.ProgressRing(visible=False, width=20, height=20)
+        self.loading_container = ft.Container(
+            content=self.loading_indicator,
+            width=50,  # Fixed width to prevent shifting
+            alignment=ft.alignment.center
+        )
         
-        # Users table header
-        table_header = ft.Row([
-            ft.Text("Email", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Name", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Role", weight=ft.FontWeight.BOLD, expand=1),
-            ft.Text("Last Login", weight=ft.FontWeight.BOLD, expand=2),
-            ft.Text("Status", weight=ft.FontWeight.BOLD, expand=1),
-            ft.Text("Actions", weight=ft.FontWeight.BOLD, expand=2),
-        ], spacing=10)
+        # Users table header with fixed widths to match row layout
+        table_header = ft.Container(
+            content=ft.Row([
+                ft.Container(width=50),  # Avatar space
+                ft.Container(ft.Text("Email", weight=ft.FontWeight.BOLD, size=12), width=200),
+                ft.Container(ft.Text("Name", weight=ft.FontWeight.BOLD, size=12), width=200),
+                ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), width=100),
+                ft.Container(ft.Text("Last Login", weight=ft.FontWeight.BOLD, size=12), width=150),
+                ft.Container(ft.Text("Status", weight=ft.FontWeight.BOLD, size=12), width=80),
+                ft.Container(ft.Text("Actions", weight=ft.FontWeight.BOLD, size=12), width=150),
+            ], spacing=10),
+            padding=ft.padding.only(left=10, right=10)
+        )
         
         # Users table content (will be populated dynamically)
         self.users_table = ft.Column(
@@ -132,12 +193,16 @@ class AdminDashboardScreen:
                 ft.Text("User Management & Role Administration", size=14, color=ft.Colors.GREY_400),
                 ft.Divider(),
                 
+                # Add/Update User Form
+                add_user_form,
+                ft.Divider(),
+                
                 # Controls row
                 ft.Row([
                     self.search_field,
                     self.filter_dropdown,
                     self.refresh_button,
-                    self.loading_indicator,
+                    self.loading_container,
                 ], spacing=10),
                 
                 ft.Divider(),
@@ -148,10 +213,6 @@ class AdminDashboardScreen:
                 
                 # Users list
                 self.users_table,
-                
-                # TODO: Add pagination controls
-                # TODO: Add bulk actions (export, bulk role change)
-                # TODO: Add statistics summary (total users, by role, active today)
                 
             ], spacing=15, expand=True),
             padding=20,
@@ -232,6 +293,7 @@ class AdminDashboardScreen:
         name = user.get('name', 'N/A')
         role = user.get('role', 'unknown')
         last_login = user.get('last_login', 'Never')
+        picture_url = user.get('picture', '')
         
         # Format last login
         if isinstance(last_login, datetime):
@@ -248,51 +310,89 @@ class AdminDashboardScreen:
         status_text = "Disabled" if status else "Active"
         status_color = ft.Colors.RED_400 if status else ft.Colors.GREEN_400
         
-        # Action buttons
+        # Check if this is the super admin
+        is_super_admin = (email == Config.SUPER_ADMIN_EMAIL)
+        
+        # Create user avatar with loading state
+        if picture_url:
+            user_avatar = ft.CircleAvatar(
+                foreground_image_src=picture_url,
+                content=ft.Icon(ft.Icons.PERSON, size=20),  # Fallback/loading icon
+                radius=20,
+            )
+        else:
+            user_avatar = ft.CircleAvatar(
+                content=ft.Icon(ft.Icons.PERSON, size=20),
+                bgcolor=ft.Colors.BLUE_GREY_700,
+                radius=20,
+            )
+        
+        # Action buttons (disabled for super admin)
         role_button = ft.PopupMenuButton(
             icon=ft.Icons.ADMIN_PANEL_SETTINGS,
-            tooltip="Change Role",
+            tooltip="Change Role" if not is_super_admin else "Super Admin - Role cannot be changed",
             items=[
                 ft.PopupMenuItem(text="Guest", on_click=lambda e, u=user: self._change_role(u, "guest")),
                 ft.PopupMenuItem(text="Free", on_click=lambda e, u=user: self._change_role(u, "free")),
                 ft.PopupMenuItem(text="Premium", on_click=lambda e, u=user: self._change_role(u, "premium")),
-                ft.PopupMenuItem(text="Developer", on_click=lambda e, u=user: self._change_role(u, "dev")),
                 ft.PopupMenuItem(text="Admin", on_click=lambda e, u=user: self._change_role(u, "admin")),
-            ]
+            ],
+            disabled=is_super_admin
         )
         
         disable_button = ft.IconButton(
             icon=ft.Icons.BLOCK if not status else ft.Icons.CHECK_CIRCLE,
-            tooltip="Disable User" if not status else "Enable User",
+            tooltip="Disable User" if not status and not is_super_admin else "Enable User" if status else "Super Admin - Cannot be disabled",
             on_click=lambda e, u=user: self._toggle_user_status(u),
-            icon_color=ft.Colors.ORANGE_400 if not status else ft.Colors.GREEN_400
+            icon_color=ft.Colors.ORANGE_400 if not status else ft.Colors.GREEN_400,
+            disabled=is_super_admin
         )
         
         delete_button = ft.IconButton(
             icon=ft.Icons.DELETE_FOREVER,
-            tooltip="Delete User",
+            tooltip="Delete User" if not is_super_admin else "Super Admin - Cannot be deleted",
             on_click=lambda e, u=user: self._delete_user(u),
-            icon_color=ft.Colors.RED_400
+            icon_color=ft.Colors.RED_400,
+            disabled=is_super_admin
         )
+        
+        # Create name display with super admin badge if applicable
+        name_display = ft.Row([
+            ft.Text(name, size=12),
+            ft.Container(
+                content=ft.Row([
+                    ft.Icon(ft.Icons.SECURITY, size=12, color=ft.Colors.YELLOW_400),
+                    ft.Text("SUPER ADMIN", size=9, weight=ft.FontWeight.BOLD, color=ft.Colors.YELLOW_400)
+                ], spacing=3, tight=True),
+                bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.YELLOW_400),
+                padding=ft.padding.symmetric(horizontal=6, vertical=2),
+                border_radius=3,
+                visible=is_super_admin
+            )
+        ], spacing=8, tight=True) if is_super_admin else ft.Text(name, size=12)
         
         return ft.Container(
             content=ft.Row([
-                ft.Text(email, expand=2, size=12),
-                ft.Text(name, expand=2, size=12),
+                ft.Container(user_avatar, width=50),
+                ft.Container(ft.Text(email, size=12, overflow=ft.TextOverflow.ELLIPSIS), width=200),
+                ft.Container(name_display, width=200),
                 ft.Container(
-                    content=ft.Text(role.title(), size=11, weight=ft.FontWeight.BOLD),
-                    bgcolor=self._get_role_color(role),
-                    padding=5,
-                    border_radius=5,
-                    expand=1
+                    ft.Container(
+                        content=ft.Text(role.title(), size=11, weight=ft.FontWeight.BOLD),
+                        bgcolor=self._get_role_color(role),
+                        padding=5,
+                        border_radius=5,
+                    ),
+                    width=100
                 ),
-                ft.Text(str(last_login), expand=2, size=11, color=ft.Colors.GREY_400),
-                ft.Text(status_text, expand=1, size=11, color=status_color),
-                ft.Row([role_button, disable_button, delete_button], expand=2, spacing=5),
+                ft.Container(ft.Text(str(last_login), size=11, color=ft.Colors.GREY_400, overflow=ft.TextOverflow.ELLIPSIS), width=150),
+                ft.Container(ft.Text(status_text, size=11, color=status_color), width=80),
+                ft.Container(ft.Row([role_button, disable_button, delete_button], spacing=5), width=150),
             ], spacing=10),
             padding=10,
-            border=ft.border.all(1, ft.Colors.GREY_800),
+            border=ft.border.all(1, ft.Colors.GREY_800 if not is_super_admin else ft.Colors.YELLOW_700),
             border_radius=5,
+            bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.YELLOW_400) if is_super_admin else None,
         )
     
     def _get_role_color(self, role: str) -> str:
@@ -301,7 +401,6 @@ class AdminDashboardScreen:
             'guest': ft.Colors.GREY_700,
             'free': ft.Colors.BLUE_700,
             'premium': ft.Colors.PURPLE_700,
-            'dev': ft.Colors.ORANGE_700,
             'admin': ft.Colors.RED_700,
         }
         return colors.get(role.lower(), ft.Colors.GREY_700)
@@ -321,6 +420,11 @@ class AdminDashboardScreen:
         # Prevent self-role change
         if email == session_manager.email:
             self._show_error("Cannot change your own role")
+            return
+        
+        # Prevent changing super admin's role
+        if email == Config.SUPER_ADMIN_EMAIL:
+            self._show_error(f"Cannot change {email}'s role - This is the super admin account")
             return
         
         # Show confirmation dialog
@@ -397,6 +501,11 @@ class AdminDashboardScreen:
             self._show_error("Cannot disable your own account")
             return
         
+        # Prevent disabling super admin
+        if email == Config.SUPER_ADMIN_EMAIL:
+            self._show_error(f"Cannot {action} {email} - This is the super admin account")
+            return
+        
         self._show_error(f"TODO: Implement user {action} functionality")
         # TODO: Implement firebase_service.disable_user(email) / enable_user(email)
     
@@ -416,8 +525,144 @@ class AdminDashboardScreen:
             self._show_error("Cannot delete your own account")
             return
         
+        # Prevent deleting super admin
+        if email == Config.SUPER_ADMIN_EMAIL:
+            self._show_error(f"Cannot delete {email} - This is the super admin account")
+            return
+        
         self._show_error("TODO: Implement user deletion functionality")
         # TODO: Implement firebase_service.delete_user(email)
+    
+    def _add_or_update_user(self, e):
+        """
+        Add a new user or update existing user's role by email
+        Creates a placeholder user document that will be populated when they first log in
+        """
+        email = self.new_user_email.value.strip().lower()
+        role = self.new_user_role.value
+        
+        # Validate email
+        if not email:
+            self._show_error("Please enter an email address")
+            return
+        
+        if "@" not in email or "." not in email.split("@")[-1]:
+            self._show_error("Please enter a valid email address")
+            return
+        
+        # Prevent modifying super admin (unless it's creating them for first time)
+        if email == Config.SUPER_ADMIN_EMAIL and role != "admin":
+            self._show_error(f"Cannot assign non-admin role to super admin {email}")
+            return
+        
+        # Security: Backend verification
+        if not self._verify_backend_permission():
+            self._handle_unauthorized_access()
+            return
+        
+        try:
+            # Check if user already exists
+            existing_user = self.firebase_service.get_user_by_email(email)
+            
+            if existing_user:
+                # User exists - update role
+                old_role = existing_user.get('role', 'unknown')
+                
+                if old_role == role:
+                    self._show_error(f"User {email} already has role '{role}'")
+                    return
+                
+                # Prevent changing super admin role
+                if email == Config.SUPER_ADMIN_EMAIL and role != "admin":
+                    self._show_error(f"Cannot change super admin's role from admin")
+                    return
+                
+                # Confirm role change
+                def confirm_update(e):
+                    dialog.open = False
+                    self.page.update()
+                    
+                    success = self.firebase_service.update_user_role(email, role)
+                    if success:
+                        self._show_success(f"Updated {email}: {old_role} → {role}")
+                        self._refresh_users(None)
+                        self.new_user_email.value = ""
+                        self.page.update()
+                    else:
+                        self._show_error(f"Failed to update user role")
+                
+                def cancel_update(e):
+                    dialog.open = False
+                    self.page.update()
+                
+                dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Confirm Role Update"),
+                    content=ft.Text(f"Update {email} from '{old_role}' to '{role}'?"),
+                    actions=[
+                        ft.TextButton("Cancel", on_click=cancel_update),
+                        ft.TextButton("Update", on_click=confirm_update),
+                    ],
+                )
+                
+                self.page.overlay.append(dialog)
+                dialog.open = True
+                self.page.update()
+            else:
+                # User doesn't exist - create placeholder document
+                def confirm_create(e):
+                    dialog.open = False
+                    self.page.update()
+                    
+                    # Create user document
+                    from datetime import datetime, timezone
+                    user_data = {
+                        'email': email,
+                        'role': role,
+                        'name': email.split('@')[0],  # Use email username as default name
+                        'created_at': datetime.now(timezone.utc),
+                        'last_login': None,
+                        'uid': f'manual_{email}',  # Temporary UID until they log in
+                        'daily_usage': 0,
+                        'usage_count': 0,
+                        'disabled': False,
+                    }
+                    
+                    success = self.firebase_service.create_or_update_user(user_data)
+                    if success:
+                        self._show_success(f"Created user {email} with role '{role}'. They can now log in with Google OAuth.")
+                        self._refresh_users(None)
+                        self.new_user_email.value = ""
+                        self.page.update()
+                    else:
+                        self._show_error(f"Failed to create user")
+                
+                def cancel_create(e):
+                    dialog.open = False
+                    self.page.update()
+                
+                dialog = ft.AlertDialog(
+                    modal=True,
+                    title=ft.Text("Confirm User Creation"),
+                    content=ft.Column([
+                        ft.Text(f"Create new user: {email}"),
+                        ft.Text(f"Role: {role}"),
+                        ft.Text(""),
+                        ft.Text("The user will be able to log in with their Google account.", color=ft.Colors.GREY_400, size=12),
+                    ], tight=True, spacing=5),
+                    actions=[
+                        ft.TextButton("Cancel", on_click=cancel_create),
+                        ft.TextButton("Create", on_click=confirm_create),
+                    ],
+                )
+                
+                self.page.overlay.append(dialog)
+                dialog.open = True
+                self.page.update()
+        
+        except Exception as ex:
+            print(f"[ERROR] Add/update user failed: {ex}")
+            self._show_error(f"Error: {str(ex)}")
     
     def _on_search_changed(self, e):
         """Filter users based on search query"""

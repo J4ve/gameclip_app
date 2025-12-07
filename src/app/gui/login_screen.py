@@ -22,14 +22,11 @@ class LoginScreen:
         self.google_loading_ring = None
         self.guest_loading_ring = None
         self.status_text = None
+        self.retry_button = None
         
         # Login state
         self.is_logging_in = False
         self.is_guest_logging_in = False
-        
-        # Auth overlay
-        self.auth_overlay = None
-        self.auth_overlay_visible = False
     
     def build(self) -> ft.Container:
         """Build and return the login screen UI"""
@@ -88,6 +85,18 @@ class LoginScreen:
             visible=False
         )
         
+        # Retry button for browser issues
+        self.retry_button = ft.TextButton(
+            "Browser didn't open? Click here to retry",
+            icon=ft.Icons.REFRESH,
+            on_click=self._handle_retry_auth,
+            style=ft.ButtonStyle(
+                color=ft.Colors.ORANGE_400,
+                padding=ft.padding.symmetric(horizontal=15, vertical=8)
+            ),
+            visible=False
+        )
+        
         # Main login container
         login_card = ft.Container(
             content=ft.Column([
@@ -105,6 +114,7 @@ class LoginScreen:
                     self.google_login_button
                 ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 self.status_text,
+                self.retry_button,
                 ft.Container(height=15),
                 ft.Divider(color=ft.Colors.GREY_700, height=1),
                 ft.Container(height=5),
@@ -192,7 +202,6 @@ class LoginScreen:
             return
         
         self._set_loading(True)
-        self._show_status("Clearing previous tokens...")
         
         # Clear tokens first to force fresh authentication
         from access_control.session import session_manager
@@ -202,21 +211,20 @@ class LoginScreen:
             # Use the actual YouTube uploader authentication
             from uploader.auth import get_youtube_service
             
-            self._show_status("Opening browser for Google authentication...")
-            
-            # Show the auth overlay immediately
-            self._show_auth_overlay()
+            self._show_status("Check your browser for authentication...")
+            self._show_retry_button(True)
             
             # Get YouTube service - this will handle the real OAuth flow
             youtube_service = get_youtube_service()
             
             if not youtube_service or not youtube_service.credentials:
-                self._hide_auth_overlay()
                 self._show_error("Google authentication failed")
+                self._show_retry_button(True)  # Keep retry button visible on failure
                 return
             
             # Get user info from Google's UserInfo API
             self._show_status("Getting user information...")
+            self._show_retry_button(False)  # Hide retry button on success
             
             try:
                 # Build userinfo service to get user details
@@ -291,21 +299,19 @@ class LoginScreen:
             session_manager.login(user_data, role)
             
             self._show_status("Authentication successful!")
-            
-            # Hide overlay before callback
-            self._hide_auth_overlay()
+            self._show_retry_button(False)  # Hide retry button on success
             
             # Call login completion callback
             if self.on_login_complete:
                 self.on_login_complete(user_data, role)
             else:
                 self._show_error("No login completion callback set!")
+                self._show_retry_button(True)
                 
         except Exception as ex:
             print(f"OAuth error: {ex}")
-            # Hide overlay on error
-            self._hide_auth_overlay()
             self._show_error(f"Authentication failed: {str(ex)}")
+            self._show_retry_button(True)  # Keep retry button visible on error
             
         finally:
             self._set_loading(False)
@@ -363,6 +369,24 @@ class LoginScreen:
         self.status_text.visible = False
         self.page.update()
     
+    def _show_retry_button(self, show: bool):
+        """Show/hide retry button for browser authentication issues"""
+        if self.retry_button:
+            self.retry_button.visible = show
+            self.page.update()
+    
+    def _handle_retry_auth(self, e):
+        """Handle retry authentication if browser didn't open"""
+        # Reset loading state first so new auth attempt can proceed
+        self.is_logging_in = False
+        self.google_loading_ring.visible = False
+        self.google_login_button.disabled = False
+        self.google_login_button.text = "Sign in with Google"
+        self.page.update()
+        
+        # Now trigger new authentication attempt
+        self._handle_google_login(e)
+    
     def _build_previous_user_section(self):
         """Build section to login as previous user if available"""
         from access_control.session import session_manager
@@ -414,105 +438,3 @@ class LoginScreen:
         except Exception as ex:
             print(f"Previous user login error: {ex}")
             self._show_error(f"Failed to login as previous user: {str(ex)}")
-    
-    def _show_auth_overlay(self):
-        """Show fullscreen auth overlay with instructions"""
-        def close_overlay(e=None):
-            self._hide_auth_overlay()
-        
-        def retry_login(e):
-            """Retry Google login"""
-            self._hide_auth_overlay()
-            self._handle_google_login(e)
-        
-        # Create overlay content
-        overlay_content = ft.Column([
-            ft.Icon(ft.Icons.LOGIN, size=80, color=ft.Colors.BLUE_400),
-            
-            ft.Text(
-                "Google Authentication in Progress",
-                size=28,
-                weight=ft.FontWeight.BOLD,
-                color=ft.Colors.BLUE_400,
-                text_align=ft.TextAlign.CENTER
-            ),
-            
-            ft.Text(
-                "A browser window has opened for you to sign in with Google.",
-                size=16,
-                color=ft.Colors.GREY_300,
-                text_align=ft.TextAlign.CENTER
-            ),
-            
-            ft.Text(
-                "Once you've completed the authentication in your browser,\nthis app will automatically continue.",
-                size=14,
-                color=ft.Colors.GREY_400,
-                text_align=ft.TextAlign.CENTER,
-                italic=True
-            ),
-            
-            ft.Container(height=30),
-            
-            ft.ProgressRing(width=50, height=50, color=ft.Colors.BLUE_400),
-            
-            ft.Container(height=30),
-            
-            ft.Text(
-                "Waiting for authentication...",
-                size=12,
-                color=ft.Colors.GREY_500,
-                text_align=ft.TextAlign.CENTER
-            ),
-            
-            ft.Container(height=40),
-            
-            # Retry button
-            ft.ElevatedButton(
-                "Browser Didn't Open? Click to Retry",
-                icon=ft.Icons.REFRESH,
-                on_click=retry_login,
-                bgcolor=ft.Colors.ORANGE_700,
-                color=ft.Colors.WHITE,
-                width=300,
-                height=45
-            ),
-            
-            ft.Container(height=20),
-            
-            ft.TextButton(
-                "Cancel",
-                on_click=close_overlay,
-                style=ft.ButtonStyle(color=ft.Colors.GREY_400)
-            ),
-            
-        ], spacing=20, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-        
-        # Create fullscreen overlay
-        self.auth_overlay = ft.Container(
-            content=ft.Column([
-                ft.Container(expand=True),
-                ft.Row([
-                    ft.Container(expand=True),
-                    overlay_content,
-                    ft.Container(expand=True),
-                ], expand=True),
-                ft.Container(expand=True),
-            ], expand=True),
-            bgcolor=ft.Colors.with_opacity(0.95, "#1A1A1A"),
-            expand=True
-        )
-        
-        self.page.overlay.append(self.auth_overlay)
-        self.auth_overlay_visible = True
-        self.page.update()
-    
-    def _hide_auth_overlay(self):
-        """Hide the auth overlay"""
-        if self.auth_overlay and self.auth_overlay_visible:
-            try:
-                self.page.overlay.remove(self.auth_overlay)
-                self.auth_overlay_visible = False
-                self.page.update()
-            except Exception as ex:
-                print(f"Error hiding auth overlay: {ex}")

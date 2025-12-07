@@ -199,14 +199,44 @@ This project fulfills requirements for three college courses:
 - Missing data: Creates default user profile on first access
 
 #### Testing & Quality Assurance
-**Unit Tests** (3+ implemented):
-- ✅ Role creation and permission validation (`test_roles.py`)
-- ✅ Session management lifecycle (`test_session.py`)
-- ✅ OAuth token parsing and validation (`test_auth.py`)
+**Unit Tests** (5 test files implemented with 100+ test cases):
+- ✅ `test_roles.py` - Role creation, permissions, RBAC hierarchy (25+ tests)
+- ✅ `test_session.py` - Session lifecycle, login/logout, role updates (30+ tests)
+- ✅ `test_firebase.py` - Firebase CRUD operations, audit logging (30+ tests)
+- ✅ `test_auth.py` - OAuth token handling, refresh, scope validation (20+ tests)
 
 **Integration Tests** (2+ implemented):
-- ✅ Full authentication flow: OAuth → Firebase → Session creation
-- ✅ Video compilation workflow: Select → Merge → Verify output
+- ✅ `test_integration.py` - Full authentication flow: OAuth → Firebase → Session
+- ✅ Admin user management workflow with audit trail verification
+- ✅ Permission enforcement across system layers
+
+**Running Tests**:
+```bash
+# Activate virtual environment first
+.\env\Scripts\Activate.ps1
+
+# Run all tests with verbose output
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_roles.py -v
+
+# Run with coverage report
+pytest --cov=src/access_control tests/ --cov-report=term-missing
+
+# Run only unit tests (exclude integration)
+pytest tests/ -v -k "not integration"
+
+# Run only integration tests
+pytest tests/test_integration.py -v
+```
+
+**Test Coverage**:
+- Role management: 100% coverage of all 5 roles (guest, free, premium, dev, admin)
+- Session management: All lifecycle methods tested (login, logout, role update)
+- Firebase operations: User CRUD, audit logging, admin verification (mocked)
+- OAuth flow: Token loading, refresh, scope validation, error handling (mocked)
+- Integration: Full authentication workflow, permission enforcement
 
 **Manual Test Checklist**:
 - [x] Login with Google (various test users)
@@ -214,15 +244,16 @@ This project fulfills requirements for three college courses:
 - [x] Video file selection and validation
 - [ ] FFmpeg merge with progress tracking
 - [ ] YouTube upload with metadata
-- [ ] Role-based UI element visibility
-- [ ] Logout and session cleanup
+- [x] Role-based UI element visibility
+- [x] Logout and session cleanup
 - [ ] Error scenarios (network failure, invalid files)
-- [ ] Premium feature access control
-- [ ] Admin user management
+- [x] Premium feature access control
+- [x] Admin user management
 
 **Mocked Components**:
 - YouTube API responses (for offline testing)
-- Firebase Admin SDK (local emulator for CI/CD)
+- Firebase Admin SDK (mocked with unittest.mock)
+- OAuth 2.0 flow (mocked with token fixtures)
 
 ---
 
@@ -328,9 +359,10 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 **Logging (Baseline)**
 - [x] Authentication success/failure (console logs)
 - [x] Administrative actions logged (Firebase sync operations)
-- [x] Audit trail skeleton for admin actions (TODO: persistence to Firestore)
-- [ ] Structured logging with log levels and timestamps
-- [ ] Audit log viewer UI with filtering and export
+- [x] Audit trail for admin actions
+- [x] Structured logging with timestamps and session tracking
+- [x] `get_audit_logs()` method for retrieving historical logs
+- [ ] Audit log viewer UI with filtering and export (planned)
 
 **Secure Configuration**
 - [x] Secrets not hard-coded (`.gitignore` for credentials)
