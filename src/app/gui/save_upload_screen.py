@@ -171,16 +171,19 @@ class SaveUploadScreen:
         """Handle preview merge completion - display the cached video"""
         self.is_merging_preview = False
         
-        if success and output_path:
-            self.cached_preview_path = output_path
-            # Check if cache file exists before trying to display
-            if Path(output_path).exists():
+        if success:
+            if output_path and Path(output_path).exists():
+                # Preview file created successfully
+                self.cached_preview_path = output_path
                 self._show_preview_video(output_path)
             else:
-                if self.progress_text:
-                    self.progress_text.value = "Preview file created but not accessible"
-                    self.progress_text.visible = False
+                # Preview was skipped (mixed codecs) - show info message
+                self.preview_text_label.value = "Preview unavailable for mixed-codec videos.\nProceed to Save to see final merged video."
+                self.preview_text_label.visible = True
+                if self.page:
+                    self.page.update()
         else:
+            # Preview failed
             if self.progress_text:
                 self.progress_text.value = "Preview unavailable"
                 self.progress_text.visible = False

@@ -54,9 +54,8 @@ class TestCacheDiagnosis:
         """Test that FFmpeg command is properly structured"""
         concat_file = "test_concat.txt"
         cache_path = "test_cache"
-        width, height = 960, 540
         
-        cmd = cache_processor._build_ffmpeg_command(concat_file, cache_path, width, height)
+        cmd = cache_processor._build_ffmpeg_command(concat_file, cache_path)
         
         print("\n=== FFmpeg Command ===")
         print(" ".join(cmd))
