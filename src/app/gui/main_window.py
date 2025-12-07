@@ -20,6 +20,23 @@ from datetime import datetime
 class MainWindow:
     """Main application window with stepper navigation"""
     
+    @staticmethod
+    def show_welcome_message(page: ft.Page, user_info: dict, role):
+        """Show formatted welcome message"""
+        # Get display name - for guests just show "Guest", for others show their actual name
+        if role.name.lower() == 'guest':
+            welcome_name = 'Guest'
+        else:
+            welcome_name = user_info.get('name') or user_info.get('email', 'User')
+        
+        snack_bar = ft.SnackBar(
+            content=ft.Text(f"Welcome, {welcome_name}!"),
+            bgcolor=ft.Colors.BLUE_700,
+        )
+        page.overlay.append(snack_bar)
+        snack_bar.open = True
+        page.update()
+    
     def __init__(self, page: ft.Page):
         self.page = page
         self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
@@ -415,12 +432,7 @@ class MainWindow:
                 self.page.update()
                 
                 # Show welcome message
-                snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome, {user_info.get('name') or user_info.get('email', 'Guest')}!")
-                )
-                self.page.overlay.append(snack_bar)
-                snack_bar.open = True
-                self.page.update()
+                MainWindow.show_welcome_message(self.page, user_info, role)
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
