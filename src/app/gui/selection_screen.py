@@ -21,17 +21,6 @@ class SelectionScreen:
         # Initialize FilePicker
         self.file_picker = ft.FilePicker(on_result=self.handle_file_selection)
         self.page.overlay.append(self.file_picker)
-
-    def on_hover(self, e):
-        """Handle hover effect on select zone"""
-        if e.data == "true":
-            self.select_zone_container.border = ft.border.all(3, ft.Colors.BLUE_400)
-            self.select_zone_container.bgcolor = ft.Colors.GREY_850
-        else:
-            self.select_zone_container.border = ft.border.all(2, ft.Colors.GREY_700)
-            self.select_zone_container.bgcolor = ft.Colors.GREY_900
-        self.page.update()
-
         
     def handle_file_selection(self, e: ft.FilePickerResultEvent):
         """Handle files selected from FilePicker"""
@@ -142,24 +131,23 @@ class SelectionScreen:
                 allow_multiple=True,
                 file_type=ft.FilePickerFileType.VIDEO,
             ),
-            on_hover=self.on_hover,
             visible=True,  # Will be set below
         )
 
         # Selected files list (only shows when files are selected)
         num_files = len(self.selected_files)
-        # Show up to 10 videos (each ~30px), min 90px, max 400px
-        file_list_height = min(max(num_files * 30, 90), 400)
+        # Show up to 15 videos (each ~40px), min 200px, max 600px
+        file_list_height = min(max(num_files * 40, 200), 600)
         self.file_list_container = ft.Container(
             content=ft.Column(
                 [self.file_list],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            width=500,
+            width=700,
             height=file_list_height,
             border=ft.border.all(1, dark_border),
             border_radius=10,
-            padding=10,
+            padding=15,
             bgcolor=monokai_bg,
         )
 

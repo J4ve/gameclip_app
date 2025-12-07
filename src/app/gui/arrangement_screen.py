@@ -230,6 +230,13 @@ class ArrangementScreen:
                     ),
                 ])
                 
+                # Drag handle icon (shows draggability)
+                drag_handle = ft.Icon(
+                    ft.Icons.DRAG_INDICATOR,
+                    size=20,
+                    color=ft.Colors.WHITE38 if not is_locked else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                )
+                
                 # Index badge with lock indicator (centered)
                 if is_locked:
                     index_badge = ft.Container(
@@ -251,8 +258,9 @@ class ArrangementScreen:
                         alignment=ft.alignment.center,
                     )
                 
-                video_item = ft.Container(
+                video_item_content = ft.Container(
                     content=ft.Row([
+                        drag_handle,
                         index_badge,
                         ft.Text(
                             video_name,
@@ -272,7 +280,59 @@ class ArrangementScreen:
                     border_radius=8,
                     on_click=lambda _, idx=i: self._select_video(idx),
                 )
-                self.file_list.controls.append(video_item)
+                
+                # Wrap in Draggable and DragTarget for drag-and-drop reordering
+                # Only allow dragging unlocked videos
+                if not is_locked:
+                    # Create compact feedback for drag mode
+                    drag_feedback = ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.DRAG_INDICATOR, size=16, color=ft.Colors.WHITE70),
+                            ft.Container(
+                                content=ft.Text(str(i + 1), color=ft.Colors.WHITE, weight=ft.FontWeight.BOLD, size=12),
+                                width=24, height=24,
+                                bgcolor=ft.Colors.with_opacity(0.9, "#00ACC1"),
+                                border_radius=12,
+                                alignment=ft.alignment.center,
+                            ),
+                            ft.Text(
+                                video_name,
+                                color=ft.Colors.WHITE,
+                                size=12,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                            ),
+                        ], spacing=8),
+                        padding=8,
+                        bgcolor=ft.Colors.with_opacity(0.95, "#1A1A1A"),
+                        border=ft.border.all(2, ft.Colors.BLUE_400),
+                        border_radius=6,
+                        width=250,
+                    )
+                    
+                    draggable_item = ft.Draggable(
+                        group="video_items",
+                        content=ft.DragTarget(
+                            group="video_items",
+                            content=video_item_content,
+                            on_accept=lambda e, idx=i: self._handle_drag_accept(e, idx),
+                            on_will_accept=lambda e, idx=i: self._handle_drag_will_accept(e, idx),
+                            on_leave=lambda e, idx=i: self._handle_drag_leave(e, idx),
+                        ),
+                        content_feedback=drag_feedback,
+                        data=i,
+                    )
+                    self.file_list.controls.append(draggable_item)
+                else:
+                    # Locked videos can only be drop targets (can't be dragged)
+                    drag_target_item = ft.DragTarget(
+                        group="video_items",
+                        content=video_item_content,
+                        on_accept=lambda e, idx=i: self._handle_drag_accept(e, idx),
+                        on_will_accept=lambda e, idx=i: self._handle_drag_will_accept(e, idx),
+                        on_leave=lambda e, idx=i: self._handle_drag_leave(e, idx),
+                    )
+                    self.file_list.controls.append(drag_target_item)
 
     def _select_video(self, index):
         """Select a video for preview"""
@@ -283,6 +343,53 @@ class ArrangementScreen:
             # the build() method runs again, creating a NEW ft.Video with the new path
             if self.main_window:
                 self.main_window.go_to_step(1)
+    
+    def _handle_drag_accept(self, e, target_idx):
+        """Handle when a video is dropped on another video"""
+        source_idx = e.src_id if hasattr(e, 'src_id') else e.data
+        
+        # Get the actual source index from the draggable's data
+        if hasattr(e.control.page, 'get_control'):
+            src_control = e.control.page.get_control(e.src_id)
+            if src_control and hasattr(src_control, 'data'):
+                source_idx = src_control.data
+        
+        # Don't move if source and target are the same
+        if source_idx == target_idx:
+            return
+        
+        # Don't allow dropping on locked positions
+        if target_idx in self.locked_videos:
+            return
+        
+        # Don't allow moving locked videos
+        if source_idx in self.locked_videos:
+            return
+        
+        # Perform the move
+        self._move_video(source_idx, target_idx)
+    
+    def _handle_drag_will_accept(self, e, target_idx):
+        """Visual feedback when hovering over a drop target"""
+        # Check if drop is allowed
+        if target_idx in self.locked_videos:
+            # Locked position - show red border
+            e.control.content.border = ft.border.all(2, ft.Colors.RED_400)
+        else:
+            # Valid drop position - show green border
+            e.control.content.border = ft.border.all(2, ft.Colors.GREEN_400)
+        
+        if self.page:
+            self.page.update()
+    
+    def _handle_drag_leave(self, e, target_idx):
+        """Remove visual feedback when drag leaves the target"""
+        is_locked = target_idx in self.locked_videos
+        # Restore original border
+        e.control.content.border = ft.border.all(1, ft.Colors.AMBER_700) if is_locked else None
+        
+        if self.page:
+            self.page.update()
 
     def _move_video(self, from_index, to_index):
         """Move video with respect to locked positions"""
