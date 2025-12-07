@@ -2,7 +2,7 @@
 
 An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube: no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
 
-![Demo of features](./docs/demo/features.gif)
+![Demo of features](./docs/demo/featuresv2.gif)
 
 > **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf) and the [initial wireframe](./docs/initial_wireframe.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
 
