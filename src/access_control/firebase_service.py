@@ -113,6 +113,58 @@ class FirebaseService:
             print(f"Failed to create user: {e}")
             raise
     
+    def create_user_placeholder(self, email: str, role: str) -> bool:
+        """
+        Create a placeholder user document for a user who hasn't logged in yet
+        This allows admins to pre-assign roles before first login
+        
+        Args:
+            email: User's email address
+            role: Role to assign (free, premium, admin)
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # Check if user already exists
+            existing = self.get_user_by_email(email)
+            if existing:
+                # User exists, just update role
+                return self.update_user_role(email, role)
+            
+            # Create placeholder document
+            user_doc = {
+                'email': email,
+                'name': 'Pending',
+                'role': role,
+                'provider': 'placeholder',
+                'created_at': datetime.now(timezone.utc),
+                'last_login': None,
+                'usage_count': 0,
+                'daily_usage': 0,
+                'daily_reset_date': datetime.now(timezone.utc).date().isoformat(),
+                'premium_until': None,
+                'google_id': None,
+                'uid': None,
+                'picture': None,
+                'authenticated': False,
+                'placeholder': True  # Mark as placeholder
+            }
+            
+            # Use email as document ID
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.set(user_doc)
+            
+            print(f"Created placeholder user document for {email} with role {role}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to create placeholder user: {e}")
+            return False
+    
     def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
         """Get user document by email"""
         if not self.is_available:
@@ -142,7 +194,7 @@ class FirebaseService:
         try:
             # Query by UID field
             users_ref = self.db.collection('users')
-            query = users_ref.where(filter=('uid', '==', uid)).limit(1)
+            query = users_ref.where('uid', '==', uid).limit(1)
             docs = query.stream()
             
             for doc in docs:
@@ -195,7 +247,7 @@ class FirebaseService:
             else:
                 # Try to find by UID if email document doesn't exist
                 users_ref = self.db.collection('users')
-                query = users_ref.where(filter=('uid', '==', uid_or_email)).limit(1)
+                query = users_ref.where('uid', '==', uid_or_email).limit(1)
                 docs = list(query.stream())
                 
                 if docs:
@@ -335,6 +387,280 @@ class FirebaseService:
         except Exception as e:
             print(f"Failed to get all users: {e}")
             return []
+    
+    # Security & Admin Methods
+    
+    def verify_admin_permission(self, uid_or_email: str) -> bool:
+        """
+        Verify user has admin role in Firestore (backend verification)
+        
+        TODO: Add additional checks:
+        - Session token validation
+        - Rate limiting
+        - IP whitelist verification
+        
+        Args:
+            uid_or_email: User ID or email to verify
+            
+        Returns:
+            bool: True if user is admin, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # Try to get user by email first, then by UID
+            user = self.get_user_by_email(uid_or_email)
+            if not user:
+                user = self.get_user_by_uid(uid_or_email)
+            
+            if not user:
+                print(f"[SECURITY] User not found for verification: {uid_or_email}")
+                return False
+            
+            role = user.get('role', '').lower()
+            is_admin = role == 'admin'
+            
+            print(f"[SECURITY] Admin verification for {uid_or_email}: {is_admin} (role: {role})")
+            return is_admin
+            
+        except Exception as e:
+            print(f"[SECURITY] Admin verification error: {e}")
+            return False
+    
+    def disable_user(self, email: str) -> bool:
+        """
+        Disable user account (soft delete)
+        
+        TODO: Implement full functionality:
+        - Set 'disabled' field to True
+        - Revoke active sessions
+        - Log to audit trail
+        
+        Args:
+            email: User email to disable
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.update({
+                'disabled': True,
+                'disabled_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            })
+            
+            print(f"[ADMIN] Disabled user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to disable user: {e}")
+            return False
+    
+    def enable_user(self, email: str) -> bool:
+        """
+        Enable previously disabled user account
+        
+        Args:
+            email: User email to enable
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.update({
+                'disabled': False,
+                'enabled_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            })
+            
+            print(f"[ADMIN] Enabled user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to enable user: {e}")
+            return False
+    
+    def delete_user(self, email: str) -> bool:
+        """
+        Permanently delete user account
+        
+        TODO: Implement full functionality:
+        - Archive user data before deletion
+        - Delete from Firebase Auth
+        - Log to audit trail
+        - Handle cascade deletion of related data
+        
+        Args:
+            email: User email to delete
+            
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            # TODO: Archive user data first
+            # TODO: Delete from Firebase Auth
+            
+            doc_ref = self.db.collection('users').document(email)
+            doc_ref.delete()
+            
+            print(f"[ADMIN] Deleted user: {email}")
+            # TODO: Log to audit trail
+            return True
+            
+        except Exception as e:
+            print(f"Failed to delete user: {e}")
+            return False
+    
+    def log_admin_action(self, admin_email: str, action: str, target_user: str, 
+                        details: Optional[Dict[str, Any]] = None, success: bool = True) -> bool:
+        """
+        Log administrative action to Firestore audit trail
+        
+        Creates a permanent audit record in the 'admin_audit_logs' collection.
+        Each log entry includes:
+        - Admin who performed the action
+        - Action type (role_change, user_creation, user_deletion, etc.)
+        - Target user affected
+        - Timestamp (UTC)
+        - Success/failure status
+        - Additional details (old/new values, reasons, etc.)
+        - Session information for traceability
+        
+        NOTE: IP address capture requires client-side context that isn't available
+        in desktop apps. For production web apps, implement IP capture via request headers.
+        
+        Args:
+            admin_email: Email of admin performing action
+            action: Action type (role_change, user_creation, user_deletion, user_update)
+            target_user: Email of user being affected
+            details: Additional details about the action (dict)
+            success: Whether action succeeded
+            
+        Returns:
+            bool: True if logged successfully, False otherwise
+        """
+        if not self.is_available:
+            print("[AUDIT] Skipped logging - Firebase unavailable")
+            return False
+        
+        try:
+            # Import session_manager to get session ID
+            from access_control.session import session_manager
+            
+            # Create audit log entry
+            log_entry = {
+                'admin_email': admin_email,
+                'action': action,
+                'target_user': target_user,
+                'details': details or {},
+                'success': success,
+                'timestamp': datetime.now(timezone.utc),
+                'session_id': session_manager.session_id if hasattr(session_manager, 'session_id') else 'unknown',
+                'client_type': 'desktop_app',  # Identifies this as desktop client
+                # Note: IP address not available in desktop apps without external service
+                # For web apps, capture via request.remote_addr or X-Forwarded-For header
+            }
+            
+            # Store in Firestore 'admin_audit_logs' collection
+            doc_ref = self.db.collection('admin_audit_logs').document()
+            doc_ref.set(log_entry)
+            
+            # Console log for development/debugging
+            status_emoji = "✅" if success else "❌"
+            print(f"[AUDIT] {status_emoji} {admin_email} -> {action} on {target_user}")
+            print(f"        Details: {details}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"[AUDIT ERROR] Failed to log action: {e}")
+            # Don't fail the operation if logging fails, just warn
+            return False
+    
+    def get_audit_logs(self, limit: int = 100, admin_filter: str = None, 
+                       action_filter: str = None, start_date: datetime = None) -> list:
+        """
+        Retrieve audit logs from Firestore for admin review
+        
+        Args:
+            limit: Maximum number of logs to return (default 100)
+            admin_filter: Filter by admin email (optional)
+            action_filter: Filter by action type (optional)
+            start_date: Only return logs after this date (optional)
+            
+        Returns:
+            list: List of audit log dictionaries, newest first
+        """
+        if not self.is_available:
+            return []
+        
+        try:
+            # Start with base query
+            query = self.db.collection('admin_audit_logs').order_by(
+                'timestamp', direction=firestore.Query.DESCENDING
+            )
+            
+            # Apply filters
+            if admin_filter:
+                query = query.where('admin_email', '==', admin_filter)
+            
+            if action_filter:
+                query = query.where('action', '==', action_filter)
+            
+            if start_date:
+                query = query.where('timestamp', '>=', start_date)
+            
+            # Execute query with limit
+            docs = query.limit(limit).stream()
+            
+            logs = []
+            for doc in docs:
+                log_data = doc.to_dict()
+                log_data['id'] = doc.id  # Include document ID
+                logs.append(log_data)
+            
+            print(f"[AUDIT] Retrieved {len(logs)} audit logs")
+            return logs
+            
+        except Exception as e:
+            print(f"[AUDIT ERROR] Failed to retrieve logs: {e}")
+            return []
+    
+    def check_rate_limit(self, user_email: str, action_type: str, max_per_minute: int = 10) -> bool:
+        """
+        Check if user has exceeded rate limit for action
+        
+        TODO: Implement full rate limiting:
+        - Track action counts in memory/Redis cache
+        - Different limits for different action types
+        - Implement sliding window algorithm
+        - Auto-block on excessive violations
+        
+        Args:
+            user_email: Email of user performing action
+            action_type: Type of action (role_change, delete, etc.)
+            max_per_minute: Maximum actions allowed per minute
+            
+        Returns:
+            bool: True if within limit, False if exceeded
+        """
+        # TODO: Implement actual rate limiting logic
+        # For now, always return True (no limiting)
+        return True
 
 
 # Global Firebase service instance

@@ -2,9 +2,9 @@
 
 An open-source desktop tool for streamers and video editors to automatically upload merged clips and VODs to YouTube: no manual renaming, no manual editing, no repetitive settings, and optional automatic highlight compilations.
 
-![Demo of features](demo/features.gif)
+![Demo of features](./docs/demo/features.gif)
 
-> **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./Group7_LTSRS.pdf) and the [initial wireframe](./initial_wireframe.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
+> **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf) and the [initial wireframe](./docs/initial_wireframe.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
 
 ---
 
@@ -19,8 +19,10 @@ An open-source desktop tool for streamers and video editors to automatically upl
 
 **Key Dependencies**
 - `flet` - Cross-platform GUI framework
+- `flet-video` - Video player component for preview functionality
 - `ffmpeg-python` - Python bindings for FFmpeg
 - `google-auth`, `google-auth-oauthlib`, `google-auth-httplib2`, `google-api-python-client` - Google API client libraries for YouTube upload
+- `firebase-admin` - Firebase Admin SDK for user management and Firestore operations
 
 **Configuration & Data**
 - JSON/YAML (templates, profiles)
@@ -140,32 +142,6 @@ This project fulfills requirements for three college courses:
 - ✅ Export (CSV manifest support for video lists)
 - ✅ Role-based multi-user system (5 distinct roles)
 
-#### Architecture & Technical Implementation
-**Project Structure** (compliant with guidelines):
-```
-/src
-  main.py                     # Entry point
-  /app
-    /gui                      # Views/page components
-      main_window.py          # Main application view
-      login_screen.py         # Authentication view
-  /access_control             # Services & state management
-    session.py                # State controller
-    roles.py                  # Role definitions
-    firebase_service.py       # Cloud data access
-  /uploader                   # YouTube API integration
-    auth.py                   # OAuth service
-    uploader.py               # Upload service
-  /assets                     # Icons, images (future)
-  /storage                    # Persistent data
-    /data                     # User data
-    /temp                     # Temporary files
-/tests
-  test_something.py           # Unit tests
-/configs
-  config.py                   # Configuration models
-```
-
 **State Management Approach**: 
 - Centralized `SessionManager` singleton pattern
 - Reactive Flet controls with `page.update()` for UI sync
@@ -223,14 +199,44 @@ This project fulfills requirements for three college courses:
 - Missing data: Creates default user profile on first access
 
 #### Testing & Quality Assurance
-**Unit Tests** (3+ implemented):
-- ✅ Role creation and permission validation (`test_roles.py`)
-- ✅ Session management lifecycle (`test_session.py`)
-- ✅ OAuth token parsing and validation (`test_auth.py`)
+**Unit Tests** (5 test files implemented with 100+ test cases):
+- ✅ `test_roles.py` - Role creation, permissions, RBAC hierarchy (25+ tests)
+- ✅ `test_session.py` - Session lifecycle, login/logout, role updates (30+ tests)
+- ✅ `test_firebase.py` - Firebase CRUD operations, audit logging (30+ tests)
+- ✅ `test_auth.py` - OAuth token handling, refresh, scope validation (20+ tests)
 
 **Integration Tests** (2+ implemented):
-- ✅ Full authentication flow: OAuth → Firebase → Session creation
-- ✅ Video compilation workflow: Select → Merge → Verify output
+- ✅ `test_integration.py` - Full authentication flow: OAuth → Firebase → Session
+- ✅ Admin user management workflow with audit trail verification
+- ✅ Permission enforcement across system layers
+
+**Running Tests**:
+```bash
+# Activate virtual environment first
+.\env\Scripts\Activate.ps1
+
+# Run all tests with verbose output
+pytest tests/ -v
+
+# Run specific test file
+pytest tests/test_roles.py -v
+
+# Run with coverage report
+pytest --cov=src/access_control tests/ --cov-report=term-missing
+
+# Run only unit tests (exclude integration)
+pytest tests/ -v -k "not integration"
+
+# Run only integration tests
+pytest tests/test_integration.py -v
+```
+
+**Test Coverage**:
+- Role management: 100% coverage of all 5 roles (guest, free, premium, dev, admin)
+- Session management: All lifecycle methods tested (login, logout, role update)
+- Firebase operations: User CRUD, audit logging, admin verification (mocked)
+- OAuth flow: Token loading, refresh, scope validation, error handling (mocked)
+- Integration: Full authentication workflow, permission enforcement
 
 **Manual Test Checklist**:
 - [x] Login with Google (various test users)
@@ -238,15 +244,16 @@ This project fulfills requirements for three college courses:
 - [x] Video file selection and validation
 - [ ] FFmpeg merge with progress tracking
 - [ ] YouTube upload with metadata
-- [ ] Role-based UI element visibility
-- [ ] Logout and session cleanup
+- [x] Role-based UI element visibility
+- [x] Logout and session cleanup
 - [ ] Error scenarios (network failure, invalid files)
-- [ ] Premium feature access control
-- [ ] Admin user management
+- [x] Premium feature access control
+- [x] Admin user management
 
 **Mocked Components**:
 - YouTube API responses (for offline testing)
-- Firebase Admin SDK (local emulator for CI/CD)
+- Firebase Admin SDK (mocked with unittest.mock)
+- OAuth 2.0 flow (mocked with token fixtures)
 
 ---
 
@@ -325,10 +332,12 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 
 **User Management (Admin)**
 - [x] Firebase Admin SDK integration for user management
-- [ ] Admin dashboard: view all users
-- [ ] Admin: create/disable/delete users
-- [ ] Admin: promote/demote user roles
+- [x] Admin dashboard: view all users (skeleton implemented)
+- [x] Admin: create/disable/delete users (backend methods ready, UI in progress)
+- [x] Admin: promote/demote user roles (implemented with confirmation)
 - [x] Firestore user documents for persistent data
+- [x] Multi-layer security verification (UI + Backend + Firebase Rules)
+- [x] Audit logging system (skeleton implemented, TODO: persistence)
 
 **Profile Management (Self-Service)**
 - [x] View user profile (name, email, picture from Google)
@@ -350,8 +359,10 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 **Logging (Baseline)**
 - [x] Authentication success/failure (console logs)
 - [x] Administrative actions logged (Firebase sync operations)
-- [ ] Structured logging with log levels and timestamps
-- [ ] Audit trail for role changes and user modifications
+- [x] Audit trail for admin actions
+- [x] Structured logging with timestamps and session tracking
+- [x] `get_audit_logs()` method for retrieving historical logs
+- [ ] Audit log viewer UI with filtering and export (planned)
 
 **Secure Configuration**
 - [x] Secrets not hard-coded (`.gitignore` for credentials)
@@ -377,6 +388,8 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [x] Role-based feature restrictions (watermark, merge limits, ads)
 - [x] Premium role with time-based expiration
 - [x] Developer role for testing and advanced features
+- [x] Admin dashboard with secure role management
+- [x] Backend permission verification before critical operations
 - [ ] Permission matrix UI for admin configuration
 
 **Enhancement 4: Secure Password Reset (Token-Based Email Flow)** 🔄
@@ -386,25 +399,34 @@ For detailed specifications, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
 - [ ] Rate limiting on reset requests
 
 **Enhancement 5: Audit Log Viewer** 🔄
+- [x] Audit logging skeleton with structured data model
+- [x] Admin action logging (role changes, user modifications)
+- [ ] Persistent storage in Firestore 'admin_audit_logs' collection
 - [ ] Filter by user, date range, action type
 - [ ] Export audit logs to CSV
-- [ ] Admin-only access to audit trail
+- [ ] Admin-only access to audit trail UI
 - [ ] Real-time log streaming (optional)
 
 #### Security Engineering
 **Threat Model (STRIDE)**
 - **Spoofing**: OAuth 2.0 prevents credential theft; Firebase tokens validated
 - **Tampering**: Firestore security rules prevent unauthorized data modification
-- **Repudiation**: Audit logs track all administrative actions
+- **Repudiation**: Audit logs track all administrative actions (skeleton implemented)
 - **Information Disclosure**: Secrets in `.gitignore`; no credentials in code
-- **Denial of Service**: Firebase rate limiting; usage quotas by role
-- **Elevation of Privilege**: RBAC enforced at both UI and backend layers
+- **Denial of Service**: Firebase rate limiting; usage quotas by role; admin action rate limiting (TODO)
+- **Elevation of Privilege**: Multi-layer RBAC enforcement (UI + Backend + Firebase Rules)
+
+**Defense in Depth Strategy**
+- **Layer 1 (UI)**: Permission checks before rendering admin controls
+- **Layer 2 (Backend)**: `verify_admin_permission()` before data operations
+- **Layer 3 (Firebase)**: Security rules enforce role-based access (TODO: deployment)
+- **Layer 4 (Audit)**: All actions logged with admin email, timestamp, target user
+- **Layer 5 (Rate Limiting)**: Prevent abuse of admin operations (TODO: implementation)
 
 **Input Validation & Sanitization**
 - [x] File type/size validation for video uploads
 - [x] Email validation via OAuth provider
 - [x] Firestore schema validation for user documents
-- [ ] SQL injection prevention (not applicable; using NoSQL)
 
 **Password Hashing**
 - Google OAuth handles password hashing (bcrypt with salt)
@@ -466,6 +488,41 @@ if role == 'admin':
 - Never commit secrets; always use `.gitignore` for config files.
 - Roles are managed via Firebase custom claims and Firestore documents.
 - User sessions are handled securely in Python; tokens are refreshed as needed.
+
+#### Admin Dashboard Security Architecture
+
+The admin dashboard implements a comprehensive multi-layer security model to prevent unauthorized access and abuse:
+
+**Access Control Layers:**
+1. **UI Layer**: Permission checks using `session_manager.has_permission(Permission.MANAGE_USERS)`
+2. **Backend Layer**: `firebase_service.verify_admin_permission()` queries Firestore to confirm admin role
+3. **Firebase Rules Layer** (TODO): Server-side security rules validate `request.auth.token.role == 'admin'`
+4. **Audit Layer**: All actions logged with admin identity, timestamp, and affected user
+5. **Rate Limiting Layer** (TODO): Prevents excessive admin operations to mitigate abuse
+
+**Security Features Implemented:**
+- ✅ Immediate access verification on dashboard initialization
+- ✅ Unauthorized access attempts logged and redirected
+- ✅ Self-modification prevention (can't change own role/delete own account)
+- ✅ Confirmation dialogs for destructive actions (role changes, deletions)
+- ✅ Backend methods for user disable/enable/delete with audit trails
+- ✅ Search and filter functionality for user management at scale
+- 🔄 Rate limiting skeleton (TODO: implement persistence layer)
+- 🔄 Session re-authentication for critical actions (TODO: MFA challenge)
+- 🔄 IP whitelisting for admin dashboard access (TODO: configuration)
+
+**Planned Enhancements:**
+- [ ] Firebase Security Rules deployment for server-side enforcement
+- [ ] Persistent audit log storage in `admin_audit_logs` collection
+- [ ] Rate limiting with Redis/memory cache and sliding window algorithm
+- [ ] Re-authentication requirement before role changes/deletions
+- [ ] Admin audit log viewer UI with filtering and CSV export
+- [ ] Real-time user status updates via Firestore listeners
+- [ ] Pagination for large user bases (>100 users)
+- [ ] Bulk operations with batch confirmation (export users, bulk role changes)
+
+**Usage:**
+Admin dashboard is automatically available to users with the `admin` role. Access is verified on initialization and before every operation to prevent privilege escalation even if frontend bugs exist.
 
 ### Milestone 6: Scheduling + Polish
 - [ ] Support `publishAt` scheduling
@@ -630,5 +687,5 @@ MIT
 
 ## 👥 Contributors
 - J4ve
-- GeraldUnderdog
+- StunnaMargiela
 - mprestado

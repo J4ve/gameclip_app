@@ -15,10 +15,10 @@ class SelectionScreen:
         self.page = page
         self.selected_files = []  # Store selected video files
         self.file_list = ft.Column(spacing=5)  # Display selected files
-        self.drop_zone_container = None  # Will store the drop zone reference
+        self.select_zone_container = None  # Will store the selection zone reference
         self.files_display = None  # Will store the files display reference
         self.file_list_container = None  # Will store the scrollable container
-        
+
         # Initialize FilePicker
         self.file_picker = ft.FilePicker(on_result=self.handle_file_selection)
         self.page.overlay.append(self.file_picker)
@@ -56,10 +56,10 @@ class SelectionScreen:
                     unssuported_file_snackbar.open = True
             
             # Toggle visibility based on files
-            if self.files_display and self.drop_zone_container:
+            if self.files_display and self.select_zone_container:
                 has_files = len(self.selected_files) > 0
                 self.files_display.visible = has_files
-                self.drop_zone_container.visible = not has_files
+                self.select_zone_container.visible = not has_files
             
             # Adjust container height based on number of files (each row ~30px)
             if self.file_list_container:
@@ -89,10 +89,10 @@ class SelectionScreen:
             ]
             
             # Toggle visibility when no files left
-            if self.files_display and self.drop_zone_container:
+            if self.files_display and self.select_zone_container:
                 has_files = len(self.selected_files) > 0
                 self.files_display.visible = has_files
-                self.drop_zone_container.visible = not has_files
+                self.select_zone_container.visible = not has_files
             
             # Adjust container height based on number of files
             if self.file_list_container:
@@ -105,21 +105,28 @@ class SelectionScreen:
     def build(self):
         """Build and return selection screen layout (Frame 1)"""
 
-        # Clickable drop zone
-        self.drop_zone_container = ft.Container(
+        # Monokai-like dark theme
+        monokai_bg = ft.Colors.with_opacity(0.95, "#272822")
+        dark_border = ft.Colors.GREY_700
+        dark_text = ft.Colors.GREY_100
+        accent = ft.Colors.BLUE_400
+
+        # Clickable selection zone with improved hover effect
+        self.select_zone_container = ft.Container(
             content=ft.Column(
                 [
-                    ft.Icon(ft.Icons.CLOUD_UPLOAD, size=64, color=ft.Colors.GREY_400),
-                    ft.Text("Click to select video files", size=16, color=ft.Colors.GREY_700),
+                    ft.Icon(ft.Icons.FILE_UPLOAD, size=64, color=accent),
+                    ft.Text("Click to Select Videos", size=18, weight=ft.FontWeight.BOLD, color=dark_text),
+                    ft.Text("Browse for video files to merge", size=12, color=ft.Colors.GREY_400),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=10,
             ),
-            width=300,
-            height=150,
-            border=ft.border.all(2, ft.Colors.GREY_400),
-            border_radius=10,
-            bgcolor=ft.Colors.GREY_100,
+            width=400,
+            height=200,
+            border=ft.border.all(2, dark_border),
+            border_radius=12,
+            bgcolor=monokai_bg,
             alignment=ft.alignment.center,
             on_click=lambda _: self.file_picker.pick_files(
                 allow_multiple=True,
@@ -130,22 +137,24 @@ class SelectionScreen:
 
         # Selected files list (only shows when files are selected)
         num_files = len(self.selected_files)
-        file_list_height = min(max(num_files * 30, 80), 200)  # 80px min so 2 files always visible
+        # Show up to 15 videos (each ~40px), min 200px, max 600px
+        file_list_height = min(max(num_files * 40, 200), 600)
         self.file_list_container = ft.Container(
             content=ft.Column(
                 [self.file_list],
                 scroll=ft.ScrollMode.AUTO,
             ),
-            width=500,
+            width=700,
             height=file_list_height,
-            border=ft.border.all(1, ft.Colors.GREY_300),
+            border=ft.border.all(1, dark_border),
             border_radius=10,
-            padding=10,
+            padding=15,
+            bgcolor=monokai_bg,
         )
 
         self.files_display = ft.Container(
             content=ft.Column([
-                ft.Text("Selected Files:", size=14, weight=ft.FontWeight.BOLD),
+                ft.Text("Selected Files:", size=14, weight=ft.FontWeight.BOLD, color=accent),
                 self.file_list_container,
                 ft.TextButton(
                     text="Add More Videos",
@@ -154,6 +163,7 @@ class SelectionScreen:
                         allow_multiple=True,
                         file_type=ft.FilePickerFileType.VIDEO,
                     ),
+                    style=ft.ButtonStyle(color=dark_text, bgcolor=accent),
                 ),
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
@@ -161,12 +171,14 @@ class SelectionScreen:
             ),
             visible=False,  # Will be set below
             padding=10,
+            bgcolor=monokai_bg,
+            border_radius=10,
         )
 
         # Set visibility based on whether files are selected
         has_files = num_files > 0
         self.files_display.visible = has_files
-        self.drop_zone_container.visible = not has_files
+        self.select_zone_container.visible = not has_files
 
         # Build main content
         main_content = ft.Column(
@@ -211,4 +223,5 @@ class SelectionScreen:
             alignment=ft.alignment.center,
             padding=40,
             expand=True,
+            bgcolor=monokai_bg,
         )

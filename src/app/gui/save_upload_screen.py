@@ -84,8 +84,6 @@ class SaveUploadScreen:
             return "Guest user"
         elif role_lower == 'premium':
             return "Premium user"
-        elif role_lower == 'dev':
-            return "Developer account"
         elif role_lower == 'admin':
             return "Administrator account"
         else:
@@ -94,8 +92,30 @@ class SaveUploadScreen:
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
+        
+        # Clear old cached preview files when new videos are selected
+        if self.video_processor is not None:
+            self.video_processor.cache_processor.clear_all_cache()
+        
+        # Also manually clean up any leftover cache files from the cache directory
+        self._clean_cache_directory()
+        
         if self.videos and not self.is_merging_preview:
             self._merge_preview()
+        
+    def _clean_cache_directory(self):
+        """Clean up old cache files from the cache directory"""
+        try:
+            cache_dir = Path(self.cache_directory)
+            if cache_dir.exists():
+                # Remove all preview cache files (preview_*.mp4)
+                for cache_file in cache_dir.glob("preview_*.mp4"):
+                    try:
+                        cache_file.unlink()
+                    except Exception:
+                        pass  # Ignore errors, file might be in use
+        except Exception:
+            pass  # Ignore directory errors
         
     def _initialize_video_processor(self):
         """Lazy load video processor"""
