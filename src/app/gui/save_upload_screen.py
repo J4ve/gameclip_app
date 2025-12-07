@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import os
 from access_control.session import session_manager
+from app.video_core.video_metadata import VideoMetadata, check_videos_compatibility
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -66,12 +67,14 @@ class SaveUploadScreen:
         Path(self.cache_directory).mkdir(parents=True, exist_ok=True)
 
 
-        # Preview text label
+        # Preview text label and icon
         self.preview_text_label = ft.Text(
             "Preview will appear when ready",
             color=ft.Colors.GREY_400,
             size=12,
+            text_align=ft.TextAlign.CENTER,
         )
+        self.preview_icon = ft.Icon(ft.Icons.VIDEOCAM, size=48, color=ft.Colors.GREY_400)
 
     def _get_role_display_text(self, role_name: str) -> str:
         """Get user-friendly role display text"""
@@ -90,6 +93,13 @@ class SaveUploadScreen:
     def set_videos(self, videos):
         """Set videos and trigger preview merge"""
         self.videos = videos or []
+        
+        # Check video compatibility
+        if self.videos:
+            is_compatible, issues = check_videos_compatibility(self.videos)
+            if not is_compatible and issues:
+                # Show compatibility warning
+                self._show_compatibility_warning(issues)
         
         # Clear old cached preview files when new videos are selected
         if self.video_processor is not None:
@@ -143,12 +153,13 @@ class SaveUploadScreen:
         cache_filename = f"preview_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         cache_path = str(Path(self.cache_directory) / cache_filename)
         
-        # Show merging status
-        if self.progress_text:
-            self.progress_text.value = "Creating preview..."
-            self.progress_text.visible = True
+        # Show merging status with generating icon
+        self.preview_icon.name = ft.Icons.VIDEO_SETTINGS
+        self.preview_icon.color = ft.Colors.ORANGE_400
+        self.preview_text_label.value = "Generating preview... 0%"
+        self.preview_text_label.visible = True
         if self.progress_bar:
-            self.progress_bar.visible = True
+            self.progress_bar.visible = False
         if self.page:
             self.page.update()
         
@@ -162,8 +173,9 @@ class SaveUploadScreen:
 
     def _update_preview_progress(self, percentage: int, message: str):
         """Update progress for preview merge"""
-        if self.progress_text:
-            self.preview_text_label.value = f"Preview: {message}"
+        if self.preview_text_label:
+            self.preview_text_label.value = f"Generating preview... {percentage}%"
+            self.preview_text_label.visible = True
         if self.page:
             self.page.update()
     
@@ -171,21 +183,27 @@ class SaveUploadScreen:
         """Handle preview merge completion - display the cached video"""
         self.is_merging_preview = False
         
-        if success and output_path:
-            self.cached_preview_path = output_path
-            # Check if cache file exists before trying to display
-            if Path(output_path).exists():
+        if success:
+            if output_path and Path(output_path).exists():
+                # Preview file created successfully
+                self.cached_preview_path = output_path
                 self._show_preview_video(output_path)
             else:
-                if self.progress_text:
-                    self.progress_text.value = "Preview file created but not accessible"
-                    self.progress_text.visible = False
+                # Preview was skipped (mixed properties) - show info message with VIDEOCAM_OFF icon
+                self.preview_icon.name = ft.Icons.VIDEOCAM_OFF
+                self.preview_icon.color = ft.Colors.ORANGE_400
+                self.preview_text_label.value = "Preview unavailable\n" + message
+                self.preview_text_label.visible = True
+                if self.page:
+                    self.page.update()
         else:
-            if self.progress_text:
-                self.progress_text.value = "Preview unavailable"
-                self.progress_text.visible = False
+            # Preview failed - show VIDEOCAM_OFF icon
+            self.preview_icon.name = ft.Icons.VIDEOCAM_OFF
+            self.preview_icon.color = ft.Colors.RED_400
+            self.preview_text_label.value = "Preview unavailable\n" + message
+            self.preview_text_label.visible = True
         
-        # Hide progress
+        # Hide progress bar
         if self.progress_bar:
             self.progress_bar.visible = False
         if self.page:
@@ -428,11 +446,18 @@ class SaveUploadScreen:
         video_list_height = min(max(num_videos * 40, 80), 200)
 
 
-        # Preview container
-        preview_content = ft.Column([
-            ft.Icon(ft.Icons.VIDEOCAM, size=48, color=ft.Colors.GREY_400),
-            self.preview_text_label,
-        ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER)
+        # Preview container - use the dynamic icon with styled container
+        preview_content = ft.Container(
+            content=ft.Column([
+                self.preview_icon,
+                ft.Container(
+                    content=self.preview_text_label,
+                    padding=ft.padding.only(left=50,right=50,top=20,bottom=20),
+                    border_radius=5,
+                ),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, alignment=ft.MainAxisAlignment.CENTER, spacing=15),
+            padding=20,
+        )
         
         if self.cached_preview_path:
             preview_content = ft.Video(
@@ -528,7 +553,7 @@ class SaveUploadScreen:
         )
     
     def _build_video_list(self):
-        """Build video list display"""
+        """Build video list display with metadata"""
         controls = []
         if not self.videos:
             controls.append(
@@ -537,6 +562,9 @@ class SaveUploadScreen:
         else:
             for i, video_path in enumerate(self.videos):
                 video_name = Path(video_path).name
+                metadata = VideoMetadata(video_path)
+                metadata_text = metadata.get_short_info()
+                
                 video_item = ft.Container(
                     content=ft.Row([
                         ft.Container(
@@ -551,13 +579,21 @@ class SaveUploadScreen:
                             border_radius=15,
                             alignment=ft.alignment.center,
                         ),
-                        ft.Text(
-                            video_name,
-                            color=ft.Colors.WHITE,
-                            expand=True,
-                            max_lines=1,
-                            overflow=ft.TextOverflow.ELLIPSIS
-                        ),
+                        ft.Column([
+                            ft.Text(
+                                video_name,
+                                color=ft.Colors.WHITE,
+                                max_lines=1,
+                                overflow=ft.TextOverflow.ELLIPSIS,
+                                weight=ft.FontWeight.BOLD,
+                                size=12,
+                            ),
+                            ft.Text(
+                                metadata_text,
+                                color=ft.Colors.GREY_400,
+                                size=10,
+                            ),
+                        ], spacing=2, expand=True),
                     ], spacing=10),
                     padding=10,
                     bgcolor=ft.Colors.with_opacity(0.05, "#FFFFFF"),
@@ -1053,3 +1089,52 @@ class SaveUploadScreen:
             self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
             self.page.snack_bar.open = True
             self.page.update()
+    
+    def _show_compatibility_warning(self, issues: list):
+        """Show warning dialog for incompatible videos"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE_400),
+                ft.Text("Video Compatibility Warning", color=ft.Colors.ORANGE_400),
+            ]),
+            content=ft.Column([
+                ft.Text(
+                    "The selected videos have different properties. For best results, videos should have:",
+                    size=12,
+                ),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text("• Same codec (e.g., H264, H265)", size=11, color=ft.Colors.CYAN_200),
+                        ft.Text("• Same resolution (e.g., 1920x1080)", size=11, color=ft.Colors.CYAN_200),
+                        ft.Text("• Same framerate (e.g., 30fps)", size=11, color=ft.Colors.CYAN_200),
+                    ], spacing=5),
+                    padding=ft.padding.only(left=10, top=10, bottom=10),
+                ),
+                ft.Divider(height=10),
+                ft.Text("Detected issues:", size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_300),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text(f"• {issue}", size=11, color=ft.Colors.ORANGE_200)
+                        for issue in issues[:5]  # Show first 5 issues
+                    ], spacing=3),
+                    padding=ft.padding.only(left=10),
+                    height=min(len(issues) * 20, 100),
+                ),
+                ft.Divider(height=10),
+                ft.Text(
+                    "⚠️ Merging may take longer as videos need re-encoding to match properties.",
+                    size=11,
+                    color=ft.Colors.YELLOW_300,
+                    italic=True,
+                ),
+            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO),
+            actions=[
+                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()

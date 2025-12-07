@@ -5,6 +5,7 @@ Selection Screen - Video selection (Step 1)
 import flet as ft
 from configs.config import Config
 from pathlib import Path
+from app.video_core.video_metadata import VideoMetadata
 
 
 class SelectionScreen:
@@ -33,17 +34,27 @@ class SelectionScreen:
                 if file_ext in Config.SUPPORTED_VIDEO_FORMATS:
                     if file_path not in self.selected_files:
                         self.selected_files.append(file_path)
+                        
+                        # Get metadata
+                        metadata = VideoMetadata(file_path)
+                        metadata_text = metadata.get_short_info()
+                        
                         # Add to visual list
                         self.file_list.controls.append(
-                            ft.Row([
-                                ft.Icon(ft.Icons.VIDEO_FILE, size=16),
-                                ft.Text(file.name, size=12, expand=True),
-                                ft.IconButton(
-                                    icon=ft.Icons.CLOSE,
-                                    icon_size=16,
-                                    on_click=lambda _, path=file_path: self.remove_file(path)
-                                ),
-                            ])
+                            ft.Column([
+                                ft.Row([
+                                    ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                                    ft.Column([
+                                        ft.Text(file.name, size=12, weight=ft.FontWeight.BOLD),
+                                        ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                                    ], spacing=2, expand=True),
+                                    ft.IconButton(
+                                        icon=ft.Icons.CLOSE,
+                                        icon_size=16,
+                                        on_click=lambda _, path=file_path: self.remove_file(path)
+                                    ),
+                                ]),
+                            ], spacing=5)
                         )
                 else:
                     # Show error for invalid format
@@ -60,44 +71,40 @@ class SelectionScreen:
                 self.files_display.visible = has_files
                 self.select_zone_container.visible = not has_files
             
-            # Adjust container height based on number of files (each row ~30px)
-            if self.file_list_container:
-                num_files = len(self.selected_files)
-                # Min 60px, max 200px, ~30px per file
-                new_height = min(max(num_files * 30, 90), 200)
-                self.file_list_container.height = new_height
-            
             self.page.update()
     
     def remove_file(self, file_path):
         """Remove file from selection"""
         if file_path in self.selected_files:
             self.selected_files.remove(file_path)
-            # Rebuild file list display
-            self.file_list.controls = [
-                ft.Row([
-                    ft.Icon(ft.Icons.VIDEO_FILE, size=16),
-                    ft.Text(Path(f).name, size=12, expand=True),
-                    ft.IconButton(
-                        icon=ft.Icons.CLOSE,
-                        icon_size=16,
-                        on_click=lambda _, path=f: self.remove_file(path)
-                    ),
-                ])
-                for f in self.selected_files
-            ]
+            # Rebuild file list display with metadata
+            self.file_list.controls = []
+            for f in self.selected_files:
+                metadata = VideoMetadata(f)
+                metadata_text = metadata.get_short_info()
+                
+                self.file_list.controls.append(
+                    ft.Column([
+                        ft.Row([
+                            ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                            ft.Column([
+                                ft.Text(Path(f).name, size=12, weight=ft.FontWeight.BOLD),
+                                ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                            ], spacing=2, expand=True),
+                            ft.IconButton(
+                                icon=ft.Icons.CLOSE,
+                                icon_size=16,
+                                on_click=lambda _, path=f: self.remove_file(path)
+                            ),
+                        ]),
+                    ], spacing=5)
+                )
             
             # Toggle visibility when no files left
             if self.files_display and self.select_zone_container:
                 has_files = len(self.selected_files) > 0
                 self.files_display.visible = has_files
                 self.select_zone_container.visible = not has_files
-            
-            # Adjust container height based on number of files
-            if self.file_list_container:
-                num_files = len(self.selected_files)
-                new_height = min(max(num_files * 30, 60), 200)
-                self.file_list_container.height = new_height
             
             self.page.update()
     
@@ -136,15 +143,14 @@ class SelectionScreen:
 
         # Selected files list (only shows when files are selected)
         num_files = len(self.selected_files)
-        # Show up to 15 videos (each ~40px), min 200px, max 600px
-        file_list_height = min(max(num_files * 40, 200), 600)
+        # Fixed height for 5 videos (5 * 30px = 150px), scrollable if more
         self.file_list_container = ft.Container(
             content=ft.Column(
                 [self.file_list],
                 scroll=ft.ScrollMode.AUTO,
             ),
             width=700,
-            height=file_list_height,
+            height=150,
             border=ft.border.all(1, dark_border),
             border_radius=10,
             padding=15,

@@ -104,17 +104,22 @@ class VideoProcessor:
         completion_callback: Optional[Callable]
     ):
         """Internal thread function for video merging"""
+        print("[VIDEO_PROCESSOR] Starting merge thread")
         self.is_processing = True
         output_file = f"{video_format.lower()}" if output_path.endswith(video_format.lower()) else f"{output_path}{video_format.lower()}"
+        print(f"[VIDEO_PROCESSOR] Output file: {output_file}")
         
         try:
-
+            print("[VIDEO_PROCESSOR] Creating output directory...")
             # Ensure output directory exists
             output_dir = Path(output_file).parent
             output_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[VIDEO_PROCESSOR] Output directory ready: {output_dir}")
             
             # Create concat file for FFmpeg
+            print("[VIDEO_PROCESSOR] Creating concat file...")
             concat_file = self._create_concat_file(video_paths)
+            print(f"[VIDEO_PROCESSOR] Concat file created: {concat_file}")
             
             if progress_callback:
                 progress_callback(10, "Preparing video merge...")
@@ -134,8 +139,10 @@ class VideoProcessor:
             }
             
             ffmpeg_codec = codec_map.get(codec, "libx264")
+            print(f"[VIDEO_PROCESSOR] Using codec: {codec} -> {ffmpeg_codec}")
             
             # Build FFmpeg command
+            # Re-encode to ensure consistent codec, framerate, and pixel format
             cmd = [
                 "ffmpeg",
                 "-f", "concat",
@@ -143,12 +150,15 @@ class VideoProcessor:
                 "-i", concat_file,
                 "-c:v", ffmpeg_codec,
                 "-c:a", "aac",  # Audio codec
-                "-strict", "experimental",
+                "-b:a", "192k",  # Audio bitrate
+                "-ar", "48000",  # Audio sample rate
+                "-ac", "2",  # Stereo audio
+                "-pix_fmt", "yuv420p",  # Ensure consistent pixel format
+                "-r", "30",  # Force consistent framerate
                 "-preset", "medium",  # Encoding speed/quality balance
-                "-vsync", "1",  # Fix frame sync issues
-                "-async", "1",  # Fix audio sync issues
-                "-avoid_negative_ts", "make_zero",  # Handle timestamp issues
-                "-fflags", "+genpts",  # Generate presentation timestamps
+                "-crf", "23",  # Quality (lower = better, 18-28 recommended)
+                "-movflags", "+faststart",  # Web optimization
+                "-max_muxing_queue_size", "1024",  # Prevent muxing errors
                 "-y",  # Overwrite output file
                 output_file
             ]
@@ -157,20 +167,32 @@ class VideoProcessor:
             if progress_callback:
                 progress_callback(30, "Merging videos...")
             
+            print("[VIDEO_PROCESSOR] Building FFmpeg command...")
+            print(f"[VIDEO_PROCESSOR] Command: ffmpeg -f concat -safe 0 -i {concat_file} -c:v {ffmpeg_codec} ...")
+            
             # Run FFmpeg process
+            print("[VIDEO_PROCESSOR] Starting FFmpeg process...")
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
             )
+            print(f"[VIDEO_PROCESSOR] FFmpeg process started (PID: {process.pid})")
             
             self.current_process = process
             
             # Read output for progress tracking
+            print("[VIDEO_PROCESSOR] Getting total duration...")
             total_duration = self._get_total_duration(video_paths)
+            print(f"[VIDEO_PROCESSOR] Total duration: {total_duration}s")
             
+            print("[VIDEO_PROCESSOR] Reading FFmpeg output...")
+            line_count = 0
             for line in process.stderr:
+                line_count += 1
+                if line_count % 30 == 0:  # Print every 30th line to avoid spam
+                    print(f"[VIDEO_PROCESSOR] Processing... (line {line_count})")
                 if progress_callback and "time=" in line:
                     # Parse current time from FFmpeg output
                     current_time = self._parse_time_from_ffmpeg(line)
@@ -179,28 +201,39 @@ class VideoProcessor:
                         progress_callback(percentage, f"Processing... {percentage}%")
             
             # Wait for process to complete
+            print("[VIDEO_PROCESSOR] Waiting for FFmpeg to complete...")
             process.wait()
+            print(f"[VIDEO_PROCESSOR] FFmpeg finished with return code: {process.returncode}")
             
             # Clean up concat file
+            print("[VIDEO_PROCESSOR] Cleaning up concat file...")
             if os.path.exists(concat_file):
                 os.remove(concat_file)
+                print("[VIDEO_PROCESSOR] Concat file removed")
             
             if process.returncode == 0:
+                print("[VIDEO_PROCESSOR] Merge successful!")
                 if progress_callback:
                     progress_callback(100, "Merge complete!")
                 if completion_callback:
                     completion_callback(True, f"Video saved: {output_file}", output_file)
             else:
+                print(f"[VIDEO_PROCESSOR] Merge failed with return code {process.returncode}")
                 error_msg = "FFmpeg process failed"
                 if completion_callback:
                     completion_callback(False, error_msg, None)
                     
         except Exception as e:
+            print(f"[VIDEO_PROCESSOR] ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
             if completion_callback:
                 completion_callback(False, f"Error: {str(e)}", None)
         finally:
+            print("[VIDEO_PROCESSOR] Cleaning up...")
             self.is_processing = False
             self.current_process = None
+            print("[VIDEO_PROCESSOR] Merge thread finished")
     
     def _create_concat_file(self, video_paths: List[str]) -> str:
         """Create temporary concat file for FFmpeg"""

@@ -150,6 +150,34 @@ class MainWindow:
     def previous_step(self):
         """Move to previous wizard step"""
         if self.current_step > 0:
+            # Sync videos from arrangement back to selection when going back
+            if self.current_step == 1:
+                self.selection_screen.selected_files = self.arrangement_screen.videos.copy()
+                # Rebuild the display
+                from app.video_core.video_metadata import VideoMetadata
+                from pathlib import Path
+                self.selection_screen.file_list.controls = []
+                for f in self.selection_screen.selected_files:
+                    metadata = VideoMetadata(f)
+                    metadata_text = metadata.get_short_info()
+                    
+                    self.selection_screen.file_list.controls.append(
+                        ft.Column([
+                            ft.Row([
+                                ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                                ft.Column([
+                                    ft.Text(Path(f).name, size=12, weight=ft.FontWeight.BOLD),
+                                    ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                                ], spacing=2, expand=True),
+                                ft.IconButton(
+                                    icon=ft.Icons.CLOSE,
+                                    icon_size=16,
+                                    on_click=lambda _, path=f: self.selection_screen.remove_file(path)
+                                ),
+                            ]),
+                        ], spacing=5)
+                    )
+            
             self.current_step -= 1
             self.go_to_step(self.current_step)
     
@@ -466,7 +494,7 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=900,
+                width=1100,
                 height=650,
             ),
             actions=actions,
