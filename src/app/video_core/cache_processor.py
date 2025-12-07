@@ -70,11 +70,11 @@ class CacheProcessor:
         
         # Check if all videos have the same codec
         if self._has_mixed_codecs(video_paths):
-            # Skip preview for mixed codecs - too slow
+            # Skip preview for mixed properties - too slow or causes issues
             if completion_callback:
                 completion_callback(
                     True, 
-                    "Preview skipped - mixed codecs detected. Proceed to final save.", 
+                    "Preview skipped - videos have different properties (codec/resolution/framerate). Use Save for final merge.", 
                     None
                 )
             return None
@@ -215,29 +215,51 @@ class CacheProcessor:
             print("[CACHE_PROCESSOR] Cache thread finished")
     
     def _has_mixed_codecs(self, video_paths: list) -> bool:
-        """Check if videos have different codecs"""
+        """
+        Check if videos have different codecs, resolutions, or framerates.
+        Stream copy only works reliably when ALL properties match.
+        """
         try:
-            codecs = set()
+            video_properties = []
             for video_path in video_paths:
                 cmd = [
                     "ffprobe",
                     "-v", "error",
                     "-select_streams", "v:0",
-                    "-show_entries", "stream=codec_name",
-                    "-of", "default=noprint_wrappers=1:nokey=1",
+                    "-show_entries", "stream=codec_name,width,height,r_frame_rate",
+                    "-of", "json",
                     video_path
                 ]
                 result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
-                codec = result.stdout.strip()
-                codecs.add(codec)
                 
-                # Early exit if we find different codecs
-                if len(codecs) > 1:
+                import json
+                data = json.loads(result.stdout)
+                stream = data['streams'][0]
+                
+                # Create a tuple of (codec, width, height, framerate)
+                props = (
+                    stream['codec_name'],
+                    stream['width'],
+                    stream['height'],
+                    stream['r_frame_rate']
+                )
+                video_properties.append(props)
+            
+            # Check if all properties are identical
+            first_props = video_properties[0]
+            for props in video_properties[1:]:
+                if props != first_props:
+                    print(f"[CACHE_PROCESSOR] Mixed properties detected:")
+                    print(f"  First video: codec={first_props[0]}, {first_props[1]}x{first_props[2]}, {first_props[3]} fps")
+                    print(f"  Other video: codec={props[0]}, {props[1]}x{props[2]}, {props[3]} fps")
                     return True
             
+            print(f"[CACHE_PROCESSOR] All videos match: codec={first_props[0]}, {first_props[1]}x{first_props[2]}, {first_props[3]} fps")
             return False
-        except Exception:
-            # If detection fails, assume mixed codecs (safer)
+            
+        except Exception as e:
+            print(f"[CACHE_PROCESSOR] Property detection failed: {e}")
+            # If detection fails, assume mixed (safer - skip preview)
             return True
     
     def _build_ffmpeg_command(self, concat_file: str, cache_path: str, width: int, height: int) -> list:
