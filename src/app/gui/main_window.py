@@ -230,6 +230,13 @@ class MainWindow:
                         ], spacing=5)
                     )
             
+            # Guest users: skip arrangement screen when going backwards too
+            if self.current_step == 2 and not session_manager.is_authenticated():
+                print("Guest user detected - skipping arrangement screen (going back)")
+                self.current_step = 0
+                self.go_to_step(0)
+                return
+            
             self.current_step -= 1
             self.go_to_step(self.current_step)
     

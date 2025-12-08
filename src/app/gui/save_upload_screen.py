@@ -10,6 +10,7 @@ import sys
 import os
 import json
 from access_control.session import session_manager
+from app.video_core.video_metadata import check_videos_compatibility, VideoMetadata
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -670,6 +671,11 @@ class SaveUploadScreen:
             self._show_error("No videos to upload")
             return
         
+        # Check if user has premium (upload is premium-only feature)
+        if not (session_manager.is_premium() or session_manager.is_admin()):
+            self._show_upload_premium_message()
+            return
+        
         # Show upload confirmation dialog
         self._show_upload_confirmation()
     
@@ -1294,7 +1300,8 @@ class SaveUploadScreen:
     
     def _start_new_merge(self, dialog):
         """Start a new merge - go back to selection screen"""
-        self._close_dialog(dialog)
+        if dialog:
+            self._close_dialog(dialog)
         if self.main_window:
             # Reset to selection screen (step 0)
             self.main_window.go_to_step(0)

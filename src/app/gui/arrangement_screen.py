@@ -250,7 +250,7 @@ class ArrangementScreen:
                             "Continue to Merge",
                             icon=ft.Icons.ARROW_FORWARD,
                             on_click=lambda _: self.main_window.next_step() if self.main_window else None,
-                            color=ft.Colors.WHITE70,
+                            style=ft.ButtonStyle(color=ft.Colors.WHITE70),
                         ),
                     ], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
                 ], 
