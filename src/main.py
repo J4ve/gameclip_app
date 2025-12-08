@@ -60,4 +60,4 @@ def main(page: ft.Page):
     page.update()
 
 
-ft.app(main)
+ft.app(target=main)
