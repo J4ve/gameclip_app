@@ -280,8 +280,8 @@ class AdminDashboard:
                 # Table with fixed height scroll
                 table_scroll,
                 
-                # Thick divider before audit logs
-                ft.Divider(height=30, thickness=3, color=ft.Colors.ORANGE_700),
+                # Divider before audit logs
+                ft.Divider(height=30),
                 
                 # Audit logs section (built inline) - ALWAYS VISIBLE
                 audit_log_content,
@@ -395,9 +395,9 @@ class AdminDashboard:
                 ], spacing=10, wrap=True),
             ], spacing=10),
             padding=15,
-            bgcolor=ft.Colors.with_opacity(0.1, "#2A2A2A"),
+            bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
             border_radius=10,
-            border=ft.border.all(1, ft.Colors.ORANGE_700),
+            border=ft.border.all(1, ft.Colors.GREY_700),
         )
         
         # Log count and loading
@@ -437,7 +437,6 @@ class AdminDashboard:
                     padding=10,
                 ),
             ], spacing=10, scroll=ft.ScrollMode.AUTO),
-            padding=10,
             height=500
         )
     
