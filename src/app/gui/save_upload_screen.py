@@ -397,16 +397,24 @@ class SaveUploadScreen:
             disabled=not save_enabled
         )
         
-        upload_button_text = "Save & Upload" if upload_enabled else "Upload Disabled"
+        upload_button_text = "Save & Upload" if upload_enabled else "Upload Locked"
+        upload_tooltip = None
+        if not upload_enabled:
+            if session_manager.is_free():
+                upload_tooltip = "YouTube upload is a Premium feature. Upgrade to upload your videos!"
+            else:
+                upload_tooltip = "Login to unlock YouTube upload"
+        
         self.upload_button = ft.ElevatedButton(
             upload_button_text,
             icon=ft.Icons.UPLOAD if upload_enabled else ft.Icons.LOCK,
             bgcolor=ft.Colors.with_opacity(0.85, "#1976D2") if upload_enabled else ft.Colors.with_opacity(0.5, "#666666"),
             color=ft.Colors.WHITE,
-            on_click=self._handle_upload,
+            on_click=self._handle_upload if upload_enabled else lambda _: self._show_upload_premium_message(),
+            tooltip=upload_tooltip,
             height=45,
             width=150,
-            disabled=not upload_enabled
+            disabled=False  # Always enabled so tooltip and click work
         )
         
         self.cancel_button = ft.ElevatedButton(
@@ -876,13 +884,38 @@ class SaveUploadScreen:
         self.page.update()
     
     def _show_success(self, message: str):
-        """Show success snackbar"""
-        snackbar = ft.SnackBar(
-            content=ft.Text(message, color=ft.Colors.WHITE),
-            bgcolor=ft.Colors.with_opacity(0.9, "#00897B"),
+        """Show success dialog with option to merge more clips"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN_400),
+                ft.Text("Save Successful!", color=ft.Colors.GREEN_400),
+            ]),
+            content=ft.Column([
+                ft.Text(message, size=14),
+                ft.Container(height=10),
+                ft.Text(
+                    f"📁 Saved to: {self.merged_video_path}",
+                    size=11,
+                    color=ft.Colors.CYAN_300,
+                    selectable=True,
+                ),
+            ], spacing=8, tight=True),
+            actions=[
+                ft.TextButton("Done", on_click=lambda _: self._close_dialog(dialog)),
+                ft.ElevatedButton(
+                    "Merge Other Clips",
+                    icon=ft.Icons.VIDEO_LIBRARY,
+                    bgcolor=ft.Colors.BLUE_700,
+                    color=ft.Colors.WHITE,
+                    on_click=lambda _: self._start_new_merge(dialog),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
-        self.page.overlay.append(snackbar)
-        snackbar.open = True
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
         self.page.update()
     
     def _show_info(self, message: str):
@@ -893,35 +926,6 @@ class SaveUploadScreen:
         )
         self.page.overlay.append(snackbar)
         snackbar.open = True
-        self.page.update()
-    
-    def _show_upload_success(self, video_id: str):
-        """Show upload success dialog"""
-        video_url = f"https://youtube.com/watch?v={video_id}"
-        
-        dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Text("Upload Successful!", color=ft.Colors.GREEN),
-            content=ft.Column([
-                ft.Text("Your video has been uploaded to YouTube.", size=14),
-                ft.Divider(height=10),
-                ft.Row([
-                    ft.Text("Video ID:", weight=ft.FontWeight.BOLD, width=100),
-                    ft.Text(video_id, color=ft.Colors.CYAN),
-                ]),
-                ft.Row([
-                    ft.Text("URL:", weight=ft.FontWeight.BOLD, width=100),
-                    ft.Text(video_url, color=ft.Colors.CYAN, size=10),
-                ]),
-            ], spacing=10, tight=True),
-            actions=[
-                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
-            ],
-            actions_alignment=ft.MainAxisAlignment.CENTER,
-        )
-        
-        self.page.overlay.append(dialog)
-        dialog.open = True
         self.page.update()
     
     def _show_upload_error(self, error_message: str):
@@ -1100,7 +1104,10 @@ class SaveUploadScreen:
         
         dialog = ft.AlertDialog(
             modal=True,
-            title=ft.Text("Upload Successful!", color=ft.Colors.GREEN),
+            title=ft.Row([
+                ft.Icon(ft.Icons.CHECK_CIRCLE, color=ft.Colors.GREEN_400),
+                ft.Text("Upload Successful!", color=ft.Colors.GREEN_400),
+            ]),
             content=ft.Column([
                 ft.Text("Your video has been uploaded to YouTube.", size=14),
                 ft.Divider(height=10),
@@ -1110,13 +1117,20 @@ class SaveUploadScreen:
                 ]),
                 ft.Row([
                     ft.Text("URL:", weight=ft.FontWeight.BOLD, width=100),
-                    ft.Text(video_url, color=ft.Colors.CYAN, size=10),
+                    ft.Text(video_url, color=ft.Colors.CYAN, size=10, selectable=True),
                 ]),
             ], spacing=10, tight=True),
             actions=[
-                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
+                ft.TextButton("Done", on_click=lambda _: self._close_dialog(dialog)),
+                ft.ElevatedButton(
+                    "Merge Other Clips",
+                    icon=ft.Icons.VIDEO_LIBRARY,
+                    bgcolor=ft.Colors.BLUE_700,
+                    color=ft.Colors.WHITE,
+                    on_click=lambda _: self._start_new_merge(dialog),
+                ),
             ],
-            actions_alignment=ft.MainAxisAlignment.CENTER,
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
         )
         
         self.page.overlay.append(dialog)
@@ -1217,3 +1231,72 @@ class SaveUploadScreen:
         self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()
+    
+    def _show_upload_premium_message(self):
+        """Show message that upload is a premium feature"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.LOCK, color=ft.Colors.AMBER_400),
+                ft.Text("Premium Feature", color=ft.Colors.AMBER_400),
+            ]),
+            content=ft.Column([
+                ft.Icon(ft.Icons.CLOUD_UPLOAD, size=64, color=ft.Colors.BLUE_400),
+                ft.Text(
+                    "YouTube Upload",
+                    size=18,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    "Uploading videos to YouTube is a Premium feature.",
+                    size=14,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Container(height=10),
+                ft.Text(
+                    "Upgrade to Premium to unlock:",
+                    size=12,
+                    weight=ft.FontWeight.BOLD,
+                ),
+                ft.Container(
+                    content=ft.Column([
+                        ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), ft.Text("Direct YouTube upload", size=12)], spacing=5),
+                        ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), ft.Text("Unlimited arrangements", size=12)], spacing=5),
+                        ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), ft.Text("No ads", size=12)], spacing=5),
+                        ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), ft.Text("Lock positions", size=12)], spacing=5),
+                    ], spacing=8),
+                    padding=10,
+                ),
+                ft.Container(height=10),
+                ft.Text(
+                    "💡 Free users can still save videos locally!",
+                    size=11,
+                    italic=True,
+                    color=ft.Colors.CYAN_300,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8, tight=True),
+            actions=[
+                ft.TextButton("Maybe Later", on_click=lambda _: self._close_dialog(dialog)),
+                ft.ElevatedButton(
+                    "Upgrade to Premium",
+                    icon=ft.Icons.STAR,
+                    bgcolor=ft.Colors.AMBER_700,
+                    color=ft.Colors.WHITE,
+                    on_click=lambda _: self._show_premium_coming_soon() or self._close_dialog(dialog),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _start_new_merge(self, dialog):
+        """Start a new merge - go back to selection screen"""
+        self._close_dialog(dialog)
+        if self.main_window:
+            # Reset to selection screen (step 0)
+            self.main_window.go_to_step(0)

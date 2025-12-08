@@ -298,6 +298,10 @@ class SessionManager:
         """Check if user is premium"""
         return bool(self._current_role and self._current_role.role_type == RoleType.PREMIUM)
     
+    def is_authenticated(self) -> bool:
+        """Check if user is authenticated (not a guest)"""
+        return self._is_logged_in and not self.is_guest
+    
     def is_free(self) -> bool:
         """Check if user is free/standard user"""
         return bool(self._current_role and self._current_role.role_type == RoleType.FREE)
