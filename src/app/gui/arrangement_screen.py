@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from app.video_core.video_metadata import VideoMetadata
+from app.services.ad_manager import ad_manager
 
 class ArrangementScreen:
     """Second screen: Arrange clips and preview"""
@@ -25,6 +26,7 @@ class ArrangementScreen:
         self.sort_order = "Descending"  # New: Ascending/Descending
         self.locked_videos = set()  # Track locked video indices (premium feature)
         self._metadata_cache = {}  # Cache metadata to avoid repeated extraction
+        self.allow_duplicates = False  # Track if duplicates are allowed
         
     def build(self):
         """Build and return arrangement screen layout (Frame 2)"""
@@ -153,12 +155,28 @@ class ArrangementScreen:
                 border_radius=5,
             )
         
+        # Allow duplicates toggle button
+        duplicate_toggle = ft.Container(
+            content=ft.Row([
+                ft.Switch(
+                    value=self.allow_duplicates,
+                    active_color=ft.Colors.BLUE_400,
+                    on_change=self._toggle_allow_duplicates,
+                ),
+                ft.Text("Allow Duplicates", size=14, color=ft.Colors.WHITE70),
+            ], spacing=10),
+            padding=ft.padding.symmetric(horizontal=10, vertical=5),
+            bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+            border_radius=5,
+        )
+        
         return ft.Container(
             content=ft.Column([
                 # Header
                 ft.Row([
                     ft.Text("Arrange Videos", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                     ft.Row([
+                        duplicate_toggle,
                         premium_indicator if premium_indicator else ft.Container(),
                         ft.Text("Sort by:", color=ft.Colors.WHITE70, size=14),
                         arrange_by_dropdown,
@@ -229,6 +247,13 @@ class ArrangementScreen:
                         on_click=lambda _, idx=i: self._move_video(idx, idx + 1),
                         disabled=not can_move_down,
                         tooltip="Move down"
+                    ),
+                    ft.IconButton(
+                        icon=ft.Icons.COPY,
+                        icon_color=ft.Colors.BLUE_400 if self.allow_duplicates else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        on_click=lambda _, idx=i: self._duplicate_video(idx),
+                        disabled=not self.allow_duplicates,
+                        tooltip="Duplicate video"
                     ),
                     ft.IconButton(
                         icon=ft.Icons.REMOVE_CIRCLE,
@@ -563,6 +588,99 @@ class ArrangementScreen:
         self._update_video_list()
         if self.main_window:
             self.main_window.go_to_step(1)
+    
+    def _duplicate_video(self, index):
+        """Duplicate a video entry at the next position"""
+        if not self.allow_duplicates:
+            return
+        
+        if 0 <= index < len(self.videos):
+            # Get the video path to duplicate
+            video_path = self.videos[index]
+            
+            # Insert duplicate right after the original
+            self.videos.insert(index + 1, video_path)
+            
+            # Update locked positions for indices after the insertion point
+            new_locked = set()
+            for locked_idx in self.locked_videos:
+                if locked_idx > index:
+                    new_locked.add(locked_idx + 1)
+                else:
+                    new_locked.add(locked_idx)
+            self.locked_videos = new_locked
+            
+            # Update selected index if needed
+            if self.selected_video_index > index:
+                self.selected_video_index += 1
+            
+            # Show success message
+            if self.page:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(f"Duplicated: {Path(video_path).name}"),
+                    bgcolor=ft.Colors.GREEN_700
+                )
+                self.page.snack_bar.open = True
+            
+            self._update_video_list()
+            if self.main_window:
+                self.main_window.go_to_step(1)
+    
+    def _toggle_allow_duplicates(self, e):
+        """Toggle the allow duplicates setting"""
+        self.allow_duplicates = e.control.value
+        
+        # If duplicates are being disabled, remove existing duplicates
+        if not self.allow_duplicates:
+            self._remove_duplicates()
+        
+        self._update_video_list()
+        if self.main_window:
+            self.main_window.go_to_step(1)
+    
+    def _remove_duplicates(self):
+        """Remove duplicate video entries when duplicates are disabled"""
+        if not self.videos:
+            return
+        
+        seen_paths = set()
+        indices_to_remove = []
+        
+        # Find duplicate indices (keep first occurrence)
+        for i, video_path in enumerate(self.videos):
+            if video_path in seen_paths:
+                indices_to_remove.append(i)
+            else:
+                seen_paths.add(video_path)
+        
+        # Remove duplicates in reverse order to maintain indices
+        removed_count = 0
+        for idx in reversed(indices_to_remove):
+            self.videos.pop(idx)
+            removed_count += 1
+            
+            # Update locked positions
+            new_locked = set()
+            for locked_idx in self.locked_videos:
+                if locked_idx < idx:
+                    new_locked.add(locked_idx)
+                elif locked_idx > idx:
+                    new_locked.add(locked_idx - 1)
+            self.locked_videos = new_locked
+            
+            # Update selected index
+            if self.selected_video_index >= len(self.videos) and len(self.videos) > 0:
+                self.selected_video_index = len(self.videos) - 1
+            elif self.selected_video_index > idx:
+                self.selected_video_index -= 1
+        
+        # Show message if duplicates were removed
+        if removed_count > 0 and self.page:
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Removed {removed_count} duplicate {'entry' if removed_count == 1 else 'entries'}"),
+                bgcolor=ft.Colors.ORANGE_700
+            )
+            self.page.snack_bar.open = True
 
     def set_videos(self, videos):
         self.videos = videos or []
@@ -595,3 +713,13 @@ class ArrangementScreen:
                         pass  # Ignore errors, file might be in use
         except Exception:
             pass  # Ignore any errors
+    
+    def _show_premium_coming_soon(self):
+        """Show coming soon message for premium feature"""
+        if self.page:
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("Premium subscription coming soon! 🚀"),
+                bgcolor=ft.Colors.AMBER_700
+            )
+            self.page.snack_bar.open = True
+            self.page.update()

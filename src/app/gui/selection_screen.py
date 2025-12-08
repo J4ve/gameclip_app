@@ -6,6 +6,7 @@ import flet as ft
 from configs.config import Config
 from pathlib import Path
 from app.video_core.video_metadata import VideoMetadata
+from app.services.ad_manager import ad_manager
 
 
 class SelectionScreen:
@@ -108,6 +109,16 @@ class SelectionScreen:
             
             self.page.update()
     
+    def _show_premium_coming_soon(self):
+        """Show coming soon message for premium feature"""
+        if self.page:
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("Premium subscription coming soon! 🚀"),
+                bgcolor=ft.Colors.AMBER_700
+            )
+            self.page.snack_bar.open = True
+            self.page.update()
+    
     def build(self):
         """Build and return selection screen layout (Frame 1)"""
 
@@ -184,24 +195,59 @@ class SelectionScreen:
         has_files = num_files > 0
         self.files_display.visible = has_files
         self.select_zone_container.visible = not has_files
+        
+        # Unlock Premium button (coming soon) - only show if user doesn't have premium access
+        from access_control.session import session_manager
+        has_premium_access = session_manager.is_premium() or session_manager.is_admin()
+        unlock_premium_button = ft.Container(
+            content=ft.Row([
+                ft.Icon(ft.Icons.STAR, size=16, color=ft.Colors.AMBER_400),
+                ft.Text("Unlock Premium", size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400),
+            ], spacing=5, tight=True),
+            padding=ft.padding.symmetric(horizontal=6, vertical=6),
+            bgcolor=ft.Colors.with_opacity(0.15, "#FFA500"),
+            border_radius=8,
+            border=ft.border.all(1, ft.Colors.AMBER_700),
+            on_click=lambda _: self._show_premium_coming_soon(),
+            tooltip="Upgrade to Premium",
+            visible=not has_premium_access,
+            alignment=ft.alignment.center,
+        )
+        
+        # Create horizontal ad for side placement
+        horizontal_ad = ad_manager.create_horizontal_ad(self.page, width=300, height=250)
+
+        # Main content area
+        main_content = ft.Column(
+            [
+                # Header
+                ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD, color=accent),
+                ft.Text(f"Supported formats: .mp4, .mkv, .mov, .avi, and more…", size=12, color=dark_text),
+
+                ft.Container(height=20),  # Spacer
+
+                # Selection zone (hidden when files are selected)
+                self.select_zone_container,
+
+                # Selected files (replaces drop zone when files exist)
+                self.files_display,
+                
+                # Unlock Premium button below - only show if user doesn't have premium access
+                ft.Row([unlock_premium_button], alignment=ft.MainAxisAlignment.CENTER) if not has_premium_access else ft.Container(),
+            ],
+            spacing=10,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            expand=True,
+        )
 
         return ft.Container(
-            content=ft.Column(
+            content=ft.Row(
                 [
-                    # Header
-                    ft.Text("Select Videos", size=24, weight=ft.FontWeight.BOLD, color=accent),
-                    ft.Text(f"Supported formats: .mp4, .mkv, .mov, .avi, and more…", size=12, color=dark_text),
-
-                    ft.Container(height=20),  # Spacer
-
-                    # Selection zone (hidden when files are selected)
-                    self.select_zone_container,
-
-                    # Selected files (replaces drop zone when files exist)
-                    self.files_display,
+                    main_content,
+                    horizontal_ad,
                 ],
-                spacing=10,
-                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=20,
+                alignment=ft.MainAxisAlignment.CENTER,
             ),
             alignment=ft.alignment.center,
             padding=40,

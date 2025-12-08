@@ -1,0 +1,12 @@
+# Ad Configuration File
+# Separate sections for horizontal and vertical ads
+# Format: image_url|redirect_url
+
+# HORIZONTAL ADS (300x250 - for side placement in selection screen)
+[HORIZONTAL]
+https://raw.githubusercontent.com/mprestado/videomerger_app/new-features/adimageslolxd/horizontal/1765210261.png|https://example.com/v1
+https://raw.githubusercontent.com/mprestado/videomerger_app/new-features/adimageslolxd/horizontal/diddyblud.png|https://example.com/v1
+https://raw.githubusercontent.com/mprestado/videomerger_app/new-features/adimageslolxd/horizontal/hotharbs.png|https://example.com/v1
+# VERTICAL ADS (600x80 - for bottom banner in main window)
+[VERTICAL]
+https://raw.githubusercontent.com/mprestado/videomerger_app/new-features/adimageslolxd/vertical/clickbait.png|https://example.com/v1
