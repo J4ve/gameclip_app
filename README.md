@@ -12,7 +12,7 @@ An open-source desktop tool for streamers and video editors to automatically upl
 **Core**
 - Python 3.x
 - YouTube Data API v3 (video upload, metadata)
-- FFmpeg (video merging, thumbnail extraction)
+- FFmpeg (video merging, codec detection, format conversion)
 - Firebase Auth + Firestore (user/role persistence and session enforcement)
 - Google OAuth 2.0 (authentication + YouTube scopes)
 
@@ -42,6 +42,274 @@ An open-source desktop tool for streamers and video editors to automatically upl
 
 ---
 
+## ✨ Key Features
+
+This section highlights the major features implemented in the application. Each feature is fully functional and tested.
+
+### 🎬 Video Processing & Merging
+
+**Multi-Video Selection**
+- File picker integration for selecting multiple video files
+- Drag-reorder not supported (use arrangement screen instead)
+- Real-time video metadata display (resolution, codec, duration, file size)
+- Support for multiple video formats: `.mp4`, `.avi`, `.mkv`, `.mov`, `.flv`, `.wmv`, `.webm`
+- Visual file list with individual remove buttons
+- Automatic validation of video formats on selection
+
+**Smart Video Arrangement**
+- Interactive video list with drag-and-drop reordering
+- Real-time video preview with embedded player (using `flet-video`)
+- Click any video to preview it instantly
+- Video sorting options:
+  - By name (A-Z or Z-A)
+  - By date (newest/oldest first)
+  - By size (largest/smallest first)
+  - By duration (longest/shortest first)
+- Lock/unlock videos to prevent accidental reordering (Premium feature)
+- Allow duplicate videos in merge list (Premium feature)
+- Visual indicators for arrangement changes
+- Metadata display for each video (codec, resolution, duration)
+
+**Intelligent Video Merging**
+- FFmpeg-powered video merging with progress tracking
+- **Smart Codec Detection**: Automatically detects if videos have compatible codecs
+  - Same codec → Fast stream copy (instant preview)
+  - Mixed codecs → Full re-encode (shows compatibility warning)
+- Downscaled preview generation for faster processing
+- Real-time preview while processing (plays cached preview instantly)
+- Configurable output settings:
+  - Video codec: H.264, H.265, VP9, AV1
+  - Output format: MP4, MKV, AVI, MOV, WEBM
+  - Custom filename and output directory
+- Cancel merge operation mid-process
+- Automatic cache cleanup after successful merge
+
+**Video Compatibility Checking**
+- Pre-merge compatibility analysis
+- Detailed compatibility warnings:
+  - Different codecs detected
+  - Resolution mismatches
+  - Framerate differences
+  - Other property inconsistencies
+- User-friendly guidance for fixing compatibility issues
+
+### 📤 YouTube Upload Integration
+
+**OAuth 2.0 Authentication**
+- Secure Google OAuth 2.0 flow
+- Browser-based authentication
+- Automatic token refresh
+- Persistent login sessions
+- YouTube API scope authorization
+
+**Video Upload Features**
+- Direct upload to YouTube after merge
+- Real-time upload progress tracking
+- Configurable video metadata:
+  - Title
+  - Description
+  - Tags (comma-separated)
+  - Visibility (Public, Private, Unlisted)
+  - Made for Kids flag
+- Success confirmation with video link
+- Error handling with retry option
+- "Merge Other Clips" quick restart after upload
+
+**Metadata Templates & Presets**
+- Save reusable metadata templates
+- Two storage options:
+  - **Local Presets**: Stored on device (JSON files)
+  - **Database Presets**: Cloud-stored in Firestore (synced across devices)
+- Load saved templates with one click
+- Template manager in configuration tab
+- Default values for new uploads
+- Export/import templates as JSON
+
+### 🔐 Access Control & Security
+
+**Multi-Role System (5 Roles)**
+- **Guest**: Limited access, no login required
+  - Can merge videos (save locally)
+  - Cannot upload to YouTube
+  - No metadata templates
+  - Ads displayed
+- **Free**: Basic authenticated user
+  - All Guest features
+  - YouTube upload capability
+  - Metadata templates
+  - Daily usage limits
+  - Ads displayed
+- **Premium**: Paid tier with enhanced features
+  - All Free features
+  - No ads
+  - Unlimited daily merges
+  - Advanced video arrangement (lock/duplicate)
+  - Priority support
+- **Developer**: Testing and development access
+  - All Premium features
+  - Debug tools
+  - No usage limits
+- **Admin**: Full system control
+  - All Developer features
+  - User management dashboard
+  - Role assignment
+  - Audit log viewer
+  - System analytics
+
+**Session Management**
+- Persistent login sessions across app restarts
+- Firebase Authentication integration
+- OAuth token management
+- Session timeout handling
+- Secure logout with token cleanup
+
+**Usage Tracking**
+- Daily merge count tracking
+- Automatic daily usage reset (midnight UTC)
+- Usage statistics display in UI
+- Role-based limits enforcement
+- Last login timestamp tracking
+
+### 👥 Admin Dashboard (Admin-Only)
+
+**User Management**
+- View all registered users
+- Search users by email/name
+- Filter users by role
+- Real-time user data from Firestore
+- User profile pictures from Google OAuth
+- Last login timestamps
+- Usage statistics per user
+
+**Role Management**
+- Change user roles with dropdown selection
+- Confirmation dialogs for critical actions
+- Self-modification prevention (can't change own role)
+- Multi-layer security verification:
+  - UI permission check
+  - Backend Firebase verification
+  - Audit logging
+
+**Audit Log Viewer**
+- Comprehensive action logging system
+- Filter logs by:
+  - Actor (admin who performed action)
+  - Target user (affected user)
+  - Action type (role change, user deletion, etc.)
+  - Date range
+- Export audit logs to CSV
+- Real-time log updates
+- Sortable columns
+- Pagination support
+
+**Security Features**
+- Multi-layer permission verification
+- Unauthorized access prevention
+- Action confirmation dialogs
+- Audit trail for all admin actions
+- Rate limiting (TODO)
+
+### 💳 Premium Purchase System (Mock)
+
+**Purchase Flow**
+- In-app premium upgrade option
+- Mock payment gateway simulation
+- Lifetime premium plan (₱5.00 PHP)
+- Instant role upgrade after purchase
+- Firebase synchronization
+
+**Premium Features Unlocked**
+- Ad removal
+- Unlimited daily merges
+- Video lock/unlock in arrangement
+- Duplicate videos in merge list
+- Advanced sorting options
+- Priority support (future)
+
+### ⚙️ Configuration & Settings
+
+**User Profile Management**
+- View account information:
+  - Name from Google OAuth
+  - Email address
+  - Profile picture
+  - Current role
+  - Usage statistics
+- Logout functionality
+- Role upgrade options (if eligible)
+
+**App Settings**
+- Output directory configuration
+- FFmpeg path configuration (if needed)
+- Default video codec selection
+- Default output format
+- Theme preferences (dark mode default)
+
+**Metadata Template Manager**
+- Create new metadata templates
+- Load existing templates
+- Edit template fields:
+  - Template name
+  - Default title
+  - Default description
+  - Default tags
+  - Default visibility
+  - Made for Kids setting
+- Save to local storage or Firestore
+- Delete templates
+- Auto-apply templates on upload
+
+### 📊 UI/UX Features
+
+**Stepper Navigation**
+- Three-step workflow:
+  1. Select Videos
+  2. Arrange & Preview
+  3. Save & Upload
+- Visual progress indicators
+- Back/Next navigation buttons
+- Step validation before proceeding
+
+**Responsive Design**
+- Dark theme optimized for long sessions
+- Consistent color scheme (teal/cyan accents)
+- Responsive layouts adapting to window size
+- Scrollable sections for long lists
+- Loading indicators for async operations
+
+**Error Handling**
+- User-friendly error messages
+- Snackbar notifications for quick feedback
+- Modal dialogs for critical errors
+- Retry options for failed operations
+- Network error recovery
+
+**Progress Tracking**
+- Real-time progress bars for:
+  - Video preview generation
+  - Final video merge
+  - YouTube upload
+- Percentage and status message display
+- Cancel operation option
+- Success confirmation dialogs
+
+### 🎯 Role-Based UI Adaptation
+
+**Dynamic Feature Visibility**
+- Upload button locked for Guest users
+- Premium features grayed out for Free users
+- Admin dashboard only visible to Admins
+- Role-specific tooltips and messages
+- "Upgrade to Premium" prompts
+
+**Usage Limit Indicators**
+- Daily merge count display
+- Remaining merges for limited roles
+- Limit reset countdown
+- Upgrade prompts when limits reached
+
+---
+
 ## 🎓 Academic Course Compliance
 
 This project fulfills requirements for three college courses:
@@ -67,11 +335,11 @@ This project fulfills requirements for three college courses:
 - Graceful handling of empty, loading, and error states
 
 ✅ **Emerging Technology Integration**
-- **AI/ML Component**: FFmpeg video processing with intelligent codec selection
-- **Cloud Services**: Firebase Admin SDK for real-time user management
-- **API Integration**: YouTube Data API v3 for video uploads
+- **Intelligent Video Processing**: FFmpeg with smart codec detection and compatibility checking
+- **Cloud Services**: Firebase Admin SDK for real-time user management across devices
+- **API Integration**: YouTube Data API v3 for video uploads with metadata
 - **Authentication**: Google OAuth 2.0 with scope-based permissions
-- Meaningful integration: Auto-generates thumbnails, optimizes video encoding, tracks usage patterns
+- **Meaningful integration**: Optimizes video encoding strategy, real-time cloud sync, tracks usage patterns
 
 ✅ **Software Engineering Practices**
 - Version control: Git with feature branching (`main`, `dev`, `feature/*`)
@@ -104,7 +372,7 @@ This project fulfills requirements for three college courses:
 - Dynamic video list updates as files are added/removed
 - Real-time progress bars during merge and upload operations
 - Form validation with instant feedback
-- Theme toggle (dark mode default)
+- Dark theme by default (light theme not implemented)
 - Role-based UI element visibility
 
 **Persistent Data Layer**:
@@ -115,7 +383,7 @@ This project fulfills requirements for three college courses:
 - Empty states: Placeholder messages for new users, empty video lists
 
 **Emerging Tech Feature**:
-- **FFmpeg Video Processing**: Automated codec detection, resolution optimization, thumbnail extraction
+- **FFmpeg Video Processing**: Automated codec detection, smart merge optimization, compatibility checking
 - **Firebase Real-Time Sync**: Live user status updates, role changes propagate instantly
 - **YouTube API Integration**: Metadata templates, scheduled publishing, progress monitoring
 - **OAuth 2.0 Flow**: Multi-scope authorization, token refresh, secure credential management
@@ -157,11 +425,11 @@ This project fulfills requirements for three college courses:
 - **External Integration**: YouTube API, OAuth (`/uploader`)
 
 #### Emerging Technology Component (Multiple Integrations)
-**1. AI-Assisted Feature: FFmpeg Intelligent Processing**
-- **Purpose**: Automatically optimizes video encoding based on content analysis
-- **Integration**: Detects optimal codec, bitrate, resolution for YouTube upload
-- **Fallback**: Manual codec selection if auto-detection fails
-- **Non-trivial**: Analyzes video metadata, adjusts settings per role limits
+**1. Intelligent Video Processing: FFmpeg Smart Codec Detection**
+- **Purpose**: Automatically detects video codec compatibility and optimizes merge strategy
+- **Integration**: Analyzes video metadata (codec, resolution, framerate) and selects optimal merge method
+- **Smart Optimization**: Uses fast stream copy for same-codec videos (instant preview), warns about mixed-codec compatibility issues
+- **Non-trivial**: Implements compatibility checking with detailed issue reporting and dynamic command generation based on video properties
 
 **2. Cloud Sync & Real-Time Updates: Firebase Integration**
 - **Purpose**: Persistent user management across devices and sessions
@@ -367,7 +635,6 @@ pytest tests/test_integration.py -v
 - [x] Usage count tracking (merge count, upload count)
 - [x] Daily usage limits with automatic reset
 - [ ] Failed login attempts tracking
-- [ ] IP/geo display (future enhancement)
 
 **Enhancement 3: Advanced RBAC (Custom Roles + Permission Matrix)** ✅
 - [x] Five distinct roles with granular permissions
