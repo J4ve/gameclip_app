@@ -278,16 +278,6 @@ class ConfigTab:
         # Reusing the instance caused UI issues when toggling views
         self.real_admin_dashboard = AdminDashboard(self.page)
         
-        # CRITICAL ORDER: Build UI first, THEN load data
-        # build() creates self.users_table and self.audit_logs_table
-        # load_users() and _load_audit_logs() populate those tables
-        admin_content = self.real_admin_dashboard.build()
-        
-        # Now load users after UI is built
-        # Pass update_ui=False because the controls are not yet attached to the page
-        # The page will render them when admin_content is added to the view
-        self.real_admin_dashboard.load_users(update_ui=False)
-        
         # Toggle button to switch to config view
         toggle_button = ft.ElevatedButton(
             text="Show Configuration",
@@ -297,17 +287,23 @@ class ConfigTab:
             color=ft.Colors.WHITE,
         )
         
-        # Simply wrap the real admin dashboard with a toggle button
+        # CRITICAL ORDER: Build UI first, THEN load data
+        # build() creates self.users_table and self.audit_logs_table
+        # load_users() and _load_audit_logs() populate those tables
+        # Pass toggle button to be rendered in the header
+        admin_content = self.real_admin_dashboard.build(extra_header_controls=[toggle_button])
+        
+        # Now load users after UI is built
+        # Pass update_ui=False because the controls are not yet attached to the page
+        # The page will render them when admin_content is added to the view
+        self.real_admin_dashboard.load_users(update_ui=False)
+        
+        # Simply wrap the real admin dashboard
         # NOTE: Do NOT use scroll=ft.ScrollMode.AUTO here because AdminDashboard
         # already handles its own scrolling and has expand=True.
         # Nested scrolling with expand=True causes layout issues/hangs.
         return ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    toggle_button,
-                ], alignment=ft.MainAxisAlignment.END),
-                admin_content,
-            ], spacing=10),
+            content=admin_content,
             padding=10,
             expand=True,
             width=1100,  # Match the size of the normal config view
