@@ -679,6 +679,180 @@ class FirebaseService:
         # TODO: Implement actual rate limiting logic
         # For now, always return True (no limiting)
         return True
+    
+    # Metadata Preset Methods
+    
+    def create_preset(self, user_id: str, preset_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create a metadata preset for a user
+        
+        Args:
+            user_id: User's email or identifier
+            preset_data: Preset configuration dictionary containing:
+                - name: Template name
+                - title: Default title template
+                - description: Default description
+                - tags: Default tags
+                - visibility: Default visibility
+                - made_for_kids: Default made_for_kids flag
+        
+        Returns:
+            Dict with preset data including 'id' field
+        """
+        if not self.is_available:
+            raise Exception("Firebase not available")
+        
+        try:
+            # Add timestamp
+            preset_doc = {
+                **preset_data,
+                'user_id': user_id,
+                'created_at': datetime.now(timezone.utc),
+                'updated_at': datetime.now(timezone.utc)
+            }
+            
+            # Add to presets collection
+            doc_ref = self.db.collection('metadata_presets').document()
+            doc_ref.set(preset_doc)
+            
+            # Return with document ID
+            preset_doc['id'] = doc_ref.id
+            print(f"Created preset '{preset_data.get('name')}' for user {user_id}")
+            return preset_doc
+            
+        except Exception as e:
+            print(f"Failed to create preset: {e}")
+            raise
+    
+    def get_user_presets(self, user_id: str) -> list:
+        """
+        Get all metadata presets for a user
+        
+        Args:
+            user_id: User's email or identifier
+        
+        Returns:
+            List of preset dictionaries
+        """
+        if not self.is_available:
+            return []
+        
+        try:
+            presets_ref = self.db.collection('metadata_presets')
+            query = presets_ref.where('user_id', '==', user_id)
+            
+            # Try with ordering first (requires index)
+            try:
+                query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
+                docs = query.stream()
+            except Exception as index_error:
+                # Fallback: query without ordering if index doesn't exist
+                if 'index' in str(index_error).lower():
+                    print(f"⚠️  Firebase index not created yet. Retrieving presets without ordering.")
+                    print(f"   Create index at: https://console.firebase.google.com/project/video-merger-edc29/firestore/indexes")
+                    query = presets_ref.where('user_id', '==', user_id)
+                    docs = query.stream()
+                else:
+                    raise
+            
+            presets = []
+            for doc in docs:
+                preset_data = doc.to_dict()
+                preset_data['id'] = doc.id
+                presets.append(preset_data)
+            
+            # Sort in memory if we couldn't order in query
+            if presets and 'created_at' in presets[0]:
+                presets.sort(key=lambda x: x.get('created_at', datetime.min.replace(tzinfo=timezone.utc)), reverse=True)
+            
+            print(f"Retrieved {len(presets)} presets for user {user_id}")
+            return presets
+            
+        except Exception as e:
+            print(f"Failed to get user presets: {e}")
+            return []
+    
+    def update_preset(self, preset_id: str, preset_data: Dict[str, Any]) -> bool:
+        """
+        Update an existing metadata preset
+        
+        Args:
+            preset_id: Document ID of the preset
+            preset_data: Updated preset data
+        
+        Returns:
+            bool: True if successful
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('metadata_presets').document(preset_id)
+            
+            # Add updated timestamp
+            update_data = {
+                **preset_data,
+                'updated_at': datetime.now(timezone.utc)
+            }
+            
+            doc_ref.update(update_data)
+            print(f"Updated preset {preset_id}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to update preset: {e}")
+            return False
+    
+    def delete_preset(self, preset_id: str) -> bool:
+        """
+        Delete a metadata preset
+        
+        Args:
+            preset_id: Document ID of the preset
+        
+        Returns:
+            bool: True if successful
+        """
+        if not self.is_available:
+            return False
+        
+        try:
+            doc_ref = self.db.collection('metadata_presets').document(preset_id)
+            doc_ref.delete()
+            print(f"Deleted preset {preset_id}")
+            return True
+            
+        except Exception as e:
+            print(f"Failed to delete preset: {e}")
+            return False
+    
+    def get_preset_by_id(self, preset_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get a specific preset by ID
+        
+        Args:
+            preset_id: Document ID of the preset
+        
+        Returns:
+            Preset dictionary or None
+        """
+        if not self.is_available:
+            return None
+        
+        try:
+            doc_ref = self.db.collection('metadata_presets').document(preset_id)
+            doc = doc_ref.get()
+            
+            if doc.exists:
+                preset_data = doc.to_dict()
+                preset_data['id'] = doc.id
+                return preset_data
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Failed to get preset: {e}")
+            return None
 
 
 # Global Firebase service instance

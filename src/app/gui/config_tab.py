@@ -934,23 +934,24 @@ class ConfigTab:
     
 
     def _save_preset_to_database(self, e=None):
-        """Save current template as a preset to Supabase database"""
+        """Save current template as a preset to Firebase database"""
         try:
-            from access_control.supabase_service import get_supabase_service
+            from access_control.firebase_service import get_firebase_service
             
             preset_name = (self.template_name_field.value or "").strip()
             if not preset_name:
                 self._show_error("Please enter a preset name (e.g., Valorant, Lethal Company)")
                 return
             
-            supabase = get_supabase_service()
-            if not supabase.is_available:
-                self._show_error("Database connection not available. Check your Supabase configuration.")
+            firebase = get_firebase_service()
+            if not firebase or not firebase.is_available:
+                self._show_error("Database connection not available. Check your Firebase configuration.")
                 return
             
-            user_id = session_manager.uid
-            if not user_id:
-                self._show_error("Cannot save preset: No user ID found")
+            # Use email as user_id for Firebase
+            user_email = session_manager.email
+            if not user_email:
+                self._show_error("Cannot save preset: No user email found")
                 return
             
             preset_data = {
@@ -967,7 +968,7 @@ class ConfigTab:
             }
             
             # Create preset
-            result = supabase.create_preset(user_id, preset_data)
+            result = firebase.create_preset(user_email, preset_data)
             self._show_success(f"Preset '{preset_name}' saved to cloud!")
             
         except Exception as ex:
@@ -975,22 +976,23 @@ class ConfigTab:
             self._show_error(f"Failed to save preset: {str(ex)}")
     
     def _load_presets_from_database(self, e=None):
-        """Load presets from Supabase database"""
+        """Load presets from Firebase database"""
         try:
-            from access_control.supabase_service import get_supabase_service
+            from access_control.firebase_service import get_firebase_service
             
-            supabase = get_supabase_service()
-            if not supabase.is_available:
-                self._show_error("Database connection not available. Check your Supabase configuration.")
+            firebase = get_firebase_service()
+            if not firebase or not firebase.is_available:
+                self._show_error("Database connection not available. Check your Firebase configuration.")
                 return
             
-            user_id = session_manager.uid
-            if not user_id:
-                self._show_error("Cannot load presets: No user ID found")
+            # Use email as user_id for Firebase
+            user_email = session_manager.email
+            if not user_email:
+                self._show_error("Cannot load presets: No user email found")
                 return
             
             # Fetch presets from database
-            presets = supabase.get_user_presets(user_id)
+            presets = firebase.get_user_presets(user_email)
             if not presets:
                 self._show_error("No cloud presets found. Create one first!")
                 return
@@ -1022,10 +1024,10 @@ class ConfigTab:
         
         def delete_preset(preset, dialog_ref):
             try:
-                from access_control.supabase_service import get_supabase_service
-                supabase = get_supabase_service()
+                from access_control.firebase_service import get_firebase_service
+                firebase = get_firebase_service()
                 
-                if supabase.delete_preset(preset.get('id')):
+                if firebase and firebase.delete_preset(preset.get('id')):
                     self._show_success(f"Preset '{preset.get('name')}' deleted!")
                     dialog_ref.open = False
                     self.page.update()

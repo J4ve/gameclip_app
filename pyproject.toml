@@ -122,6 +122,11 @@ dev-dependencies = [
     "flet[all]==0.28.3",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
 [tool.poetry]
 package-mode = false
 

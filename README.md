@@ -329,7 +329,7 @@ pytest tests/test_integration.py -v
 - [x] View user profile (name, email, picture from Google)
 - [x] Profile picture display (from Google OAuth with fallback icon)
 - [x] Metadata configuration templates (title/description/tags for uploads)
-- [ ] Cloud-stored metadata preferences per user (TODO: Save to Firestore)
+- [x] Cloud-stored metadata preferences per user
 
 **Security & Session Controls**
 - [x] Session timeout/inactivity handling
