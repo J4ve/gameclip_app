@@ -84,7 +84,7 @@ class AdminDashboard:
         self.page.snack_bar.open = True
         self.page.update()
     
-    def build(self) -> ft.Container:
+    def build(self, extra_header_controls: list = None) -> ft.Container:
         """Build the admin dashboard UI with user management and audit logs"""
         
         # Load audit logs automatically
@@ -92,7 +92,7 @@ class AdminDashboard:
             self._load_audit_logs()
         
         # Build user management section (includes audit logs inside)
-        user_management_content = self._build_user_management_section()
+        user_management_content = self._build_user_management_section(extra_header_controls)
         
         print(f"[DEBUG] user_management_content type: {type(user_management_content)}")
         
@@ -116,7 +116,7 @@ class AdminDashboard:
         print(f"[DEBUG] Returning container with {len(result.content.controls)} controls")
         return result
     
-    def _build_user_management_section(self) -> ft.Container:
+    def _build_user_management_section(self, extra_header_controls: list = None) -> ft.Container:
         """Build the user management section with inline audit log viewer"""
         
         # Add/Update User Form
@@ -246,10 +246,21 @@ class AdminDashboard:
         # Build audit log UI inline
         audit_log_content = self._build_audit_log_ui()
         
+        # Header Row
+        header_controls = [
+            ft.Text("User Management", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
+            ft.Container(expand=True)
+        ]
+        
+        if extra_header_controls:
+            header_controls.extend(extra_header_controls)
+            
+        header_row = ft.Row(header_controls, alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+        
         # Return user management section with audit logs below
         result = ft.Container(
             content=ft.Column([
-                ft.Text("User Management", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.BLUE_400),
+                header_row,
                 # Add/Update User Form
                 add_user_form,
                 ft.Divider(),
@@ -687,9 +698,8 @@ class AdminDashboard:
         """
         Enable or disable user account
         Prevents self-disable and super admin disable
-        
-        Note: Requires firebase_service.disable_user() and enable_user() methods
         """
+        print(f"🔵 [ADMIN_DASHBOARD.PY] _toggle_user_status() called for {user.get('email')}")
         email = user.get('email')
         current_status = user.get('disabled', False)
         action = "enable" if current_status else "disable"
@@ -704,8 +714,50 @@ class AdminDashboard:
             self._show_error(f"Cannot {action} {email} - This is the super admin account")
             return
         
-        self._show_error(f"Feature not yet implemented: User {action} requires firebase_service.disable_user() method")
-        # Note: When implemented, add audit logging and rate limiting like other admin actions
+        try:
+            if not self.firebase_service or not self.firebase_service.is_available:
+                self._show_error("Firebase service unavailable")
+                return
+            
+            # Security: Verify admin permission
+            current_user_email = session_manager.email
+            if not self.firebase_service.verify_admin_permission(current_user_email):
+                self._show_error("Access denied: Admin verification failed")
+                print(f"[SECURITY] Unauthorized user status change attempt by {current_user_email}")
+                return
+            
+            # Security: Check rate limit
+            if not self.firebase_service.check_rate_limit(current_user_email, 'user_status_change'):
+                self._show_error("Rate limit exceeded. Please wait before making more changes.")
+                return
+            
+            # Execute status change
+            if action == "disable":
+                success = self.firebase_service.disable_user(email)
+            else:
+                success = self.firebase_service.enable_user(email)
+            
+            # Log the admin action
+            self.firebase_service.log_admin_action(
+                admin_email=current_user_email,
+                action=f'user_{action}',
+                target_user=email,
+                details={'previous_status': 'disabled' if current_status else 'enabled'},
+                success=success
+            )
+            
+            if success:
+                self._show_success(f"User {action}d successfully: {email}")
+                self._refresh_users(None)
+                # Refresh audit logs
+                if hasattr(self, '_load_audit_logs'):
+                    self._load_audit_logs()
+            else:
+                self._show_error(f"Failed to {action} user")
+        
+        except Exception as e:
+            print(f"[ERROR] User status change failed: {e}")
+            self._show_error(f"Error: {str(e)}")
     
     def _delete_user(self, user: Dict[str, Any]):
         print("🔵 [ADMIN_DASHBOARD.PY] _delete_user() called")
