@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 import sys
 import os
+import json
 from access_control.session import session_manager
 from app.video_core.video_metadata import VideoMetadata, check_videos_compatibility
 
@@ -763,10 +764,33 @@ class SaveUploadScreen:
     
     def _open_upload_settings_dialog(self, e):
         """Open dialog to edit upload settings"""
+        # Get available templates
+        templates_dir = Path.home() / "Videos" / "VideoMerger" / "templates"
+        template_options = [ft.dropdown.Option("-- Select Template --", "-- Select Template --")]
+        
+        if templates_dir.exists():
+            for template_file in templates_dir.glob("*.json"):
+                template_name = template_file.stem
+                template_options.append(ft.dropdown.Option(template_name, template_name))
+        
+        # Template selector dropdown
+        template_dropdown = ft.Dropdown(
+            label="Load from Template",
+            options=template_options,
+            value="-- Select Template --",
+            width=300,
+            on_change=lambda e: self._apply_template(e.control.value, dialog),
+        )
+        
         dialog = ft.AlertDialog(
             modal=True,
             title=ft.Text("Upload Settings"),
             content=ft.Column([
+                ft.Text("Templates", weight=ft.FontWeight.BOLD, size=14),
+                ft.Text("Load a saved template or configure manually", size=11, color=ft.Colors.GREY_400),
+                template_dropdown,
+                
+                ft.Divider(height=20),
                 ft.Text("Video Metadata", weight=ft.FontWeight.BOLD, size=14),
                 self.title_field,
                 self.description_field,
@@ -776,7 +800,7 @@ class SaveUploadScreen:
                 ft.Divider(height=20),
                 ft.Text("Privacy & Compliance", weight=ft.FontWeight.BOLD, size=14),
                 self.made_for_kids_checkbox,
-            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO),
+            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO, height=500),
             actions=[
                 ft.TextButton("Cancel", on_click=lambda _: self._close_dialog(dialog)),
                 ft.TextButton("Save", on_click=lambda _: self._close_dialog(dialog)),
@@ -787,6 +811,46 @@ class SaveUploadScreen:
         self.page.overlay.append(dialog)
         dialog.open = True
         self.page.update()
+    
+    def _apply_template(self, template_name, dialog):
+        """Apply a saved template to the upload form fields"""
+        if template_name == "-- Select Template --":
+            return
+        
+        try:
+            templates_dir = Path.home() / "Videos" / "VideoMerger" / "templates"
+            template_path = templates_dir / f"{template_name}.json"
+            
+            if not template_path.exists():
+                self._show_error(f"Template '{template_name}' not found")
+                return
+            
+            # Load template data
+            with open(template_path, 'r') as f:
+                template_data = json.load(f)
+            
+            # Apply to form fields
+            self.title_field.value = template_data.get('title', '')
+            self.description_field.value = template_data.get('description', '')
+            self.tags_field.value = template_data.get('tags', '')
+            
+            # Update visibility dropdown
+            visibility = template_data.get('visibility', 'unlisted')
+            # Capitalize first letter to match dropdown options
+            self.visibility_dropdown.value = visibility.capitalize()
+            
+            # Update checkbox
+            self.made_for_kids_checkbox.value = template_data.get('made_for_kids', False)
+            
+            # Update dialog
+            self.page.update()
+            
+            # Show success message
+            self._show_info(f"Template '{template_name}' loaded successfully")
+            
+        except Exception as ex:
+            print(f"Error loading template: {ex}")
+            self._show_error(f"Failed to load template: {str(ex)}")
     
     def _close_dialog(self, dialog):
         """Close a dialog"""
