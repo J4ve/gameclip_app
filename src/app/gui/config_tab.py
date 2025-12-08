@@ -37,8 +37,8 @@ class ConfigTab:
         self.output_directory_field = None
         self.ffmpeg_path_field = None
         
-        # Templates storage
-        self.templates_dir = Path("storage/data/templates")
+        # Templates storage - same location as merged videos
+        self.templates_dir = Path.home() / "Videos" / "VideoMerger" / "templates"
         self.templates_dir.mkdir(parents=True, exist_ok=True)
         
         # Current template
@@ -593,13 +593,25 @@ class ConfigTab:
             color=ft.Colors.WHITE
         )
         
+        # Get template count for display
+        template_count = len(list(self.templates_dir.glob("*.json"))) if self.templates_dir.exists() else 0
+        
         return ft.Container(
             content=ft.Column([
                 ft.Text("Metadata Templates & Presets", size=18, weight=ft.FontWeight.BOLD),
                 ft.Text("Create reusable templates for video metadata", size=12, color=ft.Colors.GREY_400),
                 
                 # Local templates section
-                ft.Text("Local Templates (JSON Files)", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY_300),
+                ft.Row([
+                    ft.Text("Local Templates (JSON Files)", size=14, weight=ft.FontWeight.BOLD, color=ft.Colors.GREY_300),
+                    ft.Container(
+                        content=ft.Text(f"{template_count} saved", size=11, color=ft.Colors.CYAN_400),
+                        bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.CYAN_700),
+                        padding=ft.padding.symmetric(horizontal=8, vertical=3),
+                        border_radius=10,
+                    )
+                ], spacing=10),
+                ft.Text(f"📁 Location: {self.templates_dir}", size=10, color=ft.Colors.GREY_500),
                 ft.Row([self.templates_dropdown, load_template_btn], spacing=10),
                 
                 self.template_name_field,
@@ -723,7 +735,7 @@ class ConfigTab:
             self._show_error(f"Error selecting template: {ex}")
     
     def _save_template(self, e=None):
-        """Save current template"""
+        """Save current template with confirmation dialog"""
         try:
             template_name = (self.template_name_field.value or "").strip()
             if not template_name:
@@ -739,21 +751,64 @@ class ConfigTab:
                 "made_for_kids": self.default_kids_checkbox.value,
             }
 
-            try:
-                template_path = self.templates_dir / f"{template_name}.json"
-                with open(template_path, 'w') as f:
-                    json.dump(template_data, f, indent=2)
-
-                # Refresh dropdown
-                self.templates_dropdown.options = self._get_template_options()
-                # try to preserve selection
-                self.templates_dropdown.value = template_name
+            # Show confirmation dialog
+            template_path = self.templates_dir / f"{template_name}.json"
+            file_exists = template_path.exists()
+            
+            def confirm_save(evt=None):
+                dialog.open = False
                 self.page.update()
+                
+                try:
+                    with open(template_path, 'w') as f:
+                        json.dump(template_data, f, indent=2)
 
-                self._show_success(f"Template '{template_name}' saved successfully")
+                    # Refresh dropdown
+                    self.templates_dropdown.options = self._get_template_options()
+                    # try to preserve selection
+                    self.templates_dropdown.value = template_name
+                    self.page.update()
 
-            except Exception as ex:
-                self._show_error(f"Failed to save template: {str(ex)}")
+                    self._show_success(f"Template '{template_name}' saved successfully")
+                except Exception as ex:
+                    self._show_error(f"Failed to save template: {str(ex)}")
+            
+            def cancel_save(evt=None):
+                dialog.open = False
+                self.page.update()
+            
+            # Create confirmation dialog
+            dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Save Template" if not file_exists else "Overwrite Template?"),
+                content=ft.Column([
+                    ft.Text("Template will be saved with the following details:", size=14),
+                    ft.Divider(height=10),
+                    ft.Row([
+                        ft.Text("Name:", weight=ft.FontWeight.BOLD, width=100),
+                        ft.Text(template_name, color=ft.Colors.CYAN),
+                    ]),
+                    ft.Row([
+                        ft.Text("Location:", weight=ft.FontWeight.BOLD, width=100),
+                        ft.Text(str(template_path), color=ft.Colors.GREY_400, size=10),
+                    ]),
+                    ft.Divider(height=10),
+                    ft.Text(
+                        "⚠️ This will overwrite the existing template!" if file_exists else "✓ Template will be available in the upload screen",
+                        size=12,
+                        color=ft.Colors.ORANGE_400 if file_exists else ft.Colors.GREEN_400
+                    ),
+                ], spacing=8, tight=True),
+                actions=[
+                    ft.TextButton("Cancel", on_click=cancel_save),
+                    ft.TextButton("Save", on_click=confirm_save),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            
+            self.page.overlay.append(dialog)
+            dialog.open = True
+            self.page.update()
 
         except Exception as ex:
             print(f"_save_template error: {ex}")
