@@ -620,14 +620,10 @@ class FirebaseService:
             # Apply filters
             # Note: Firestore has limitations on multiple inequality filters
             # If using multiple date filters, they must be on the same field
-            if admin_filter:
-                query = query.where('admin_email', '==', admin_filter)
             
-            if action_filter:
-                query = query.where('action', '==', action_filter)
-            
-            if target_user_filter:
-                query = query.where('target_user', '==', target_user_filter)
+            # CLIENT-SIDE FILTERING ADAPTATION:
+            # We only apply date filters in the query to avoid composite index requirements
+            # (e.g. admin_email + timestamp) which cause 400 errors without manual indexing.
             
             if start_date:
                 query = query.where('timestamp', '>=', start_date)
@@ -641,6 +637,17 @@ class FirebaseService:
             logs = []
             for doc in docs:
                 log_data = doc.to_dict()
+                
+                # Apply client-side filters
+                if admin_filter and log_data.get('admin_email') != admin_filter:
+                    continue
+                
+                if action_filter and log_data.get('action') != action_filter:
+                    continue
+                
+                if target_user_filter and log_data.get('target_user') != target_user_filter:
+                    continue
+                
                 log_data['id'] = doc.id  # Include document ID
                 logs.append(log_data)
             

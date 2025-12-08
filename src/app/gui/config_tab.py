@@ -298,15 +298,20 @@ class ConfigTab:
         )
         
         # Simply wrap the real admin dashboard with a toggle button
+        # NOTE: Do NOT use scroll=ft.ScrollMode.AUTO here because AdminDashboard
+        # already handles its own scrolling and has expand=True.
+        # Nested scrolling with expand=True causes layout issues/hangs.
         return ft.Container(
             content=ft.Column([
                 ft.Row([
                     toggle_button,
                 ], alignment=ft.MainAxisAlignment.END),
                 admin_content,
-            ], spacing=10, scroll=ft.ScrollMode.AUTO),
+            ], spacing=10),
             padding=10,
             expand=True,
+            width=1100,  # Match the size of the normal config view
+            height=700   # Match the size of the normal config view
         )
     
     def _build_account_section(self):
@@ -902,26 +907,33 @@ class ConfigTab:
     
     def _toggle_admin_config_view(self):
         """Toggle between admin dashboard and config view"""
-        print("Toggled config/admin view")
+        print("🔵 [CONFIG_TAB] _toggle_admin_config_view called")
+        print(f"🔵 [CONFIG_TAB] Current show_config_view: {self.show_config_view}")
         self.show_config_view = not self.show_config_view
+        print(f"🔵 [CONFIG_TAB] New show_config_view: {self.show_config_view}")
         
         # Find and update the dialog content
         try:
             # Rebuild the entire view
+            print("🔵 [CONFIG_TAB] Rebuilding view...")
             new_content = self.build()
+            print("🔵 [CONFIG_TAB] View rebuilt")
             
             # Find the dialog in page.overlay and update its content
             for overlay_item in self.page.overlay:
                 if isinstance(overlay_item, ft.AlertDialog) and overlay_item.open:
                     # Update dialog content with new build
+                    print("🔵 [CONFIG_TAB] Updating dialog content")
                     overlay_item.content = new_content
                     self.page.update()
+                    print("🔵 [CONFIG_TAB] Page updated")
                     return
             
             # If no dialog found, just update the page
+            print("🔵 [CONFIG_TAB] No dialog found, updating page directly")
             self.page.update()
         except Exception as e:
-            print(f"Error toggling view: {e}")
+            print(f"🔴 [CONFIG_TAB] Error toggling view: {e}")
             self._show_error(f"Failed to toggle view: {str(e)}")
     
 
