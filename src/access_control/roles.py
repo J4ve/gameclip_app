@@ -110,12 +110,11 @@ class GuestRole(Role):
 
 
 class FreeRole(Role):
-    """Free tier user - can upload but has ads"""
+    """Free tier user - can save but cannot upload to YouTube"""
     
     def __init__(self):
         permissions = {
             Permission.SAVE_VIDEO,
-            Permission.UPLOAD_VIDEO,
             Permission.MERGE_VIDEOS,
         }
         
@@ -133,7 +132,7 @@ class FreeRole(Role):
             role_type=RoleType.FREE,
             permissions=permissions,
             limits=limits,
-            description="Free tier user with upload capability but has ads"
+            description="Free tier user - can save videos locally but cannot upload to YouTube"
         )
 
 

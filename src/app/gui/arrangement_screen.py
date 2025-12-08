@@ -5,6 +5,7 @@ Arrangement Screen - Video preview & ordering (Step 2)
 import flet as ft
 import flet_video
 from access_control.session import session_manager
+from access_control.usage_tracker import usage_tracker
 import os
 from datetime import datetime
 from pathlib import Path
@@ -17,6 +18,9 @@ class ArrangementScreen:
     def __init__(self, page=None, videos=None, on_next=None, on_back=None):
         self.page = page
         self.videos = videos or []
+        self.original_order = []  # Store original order from selection
+        self.arrangement_changed = False  # Track if user actually changed the order
+        self.usage_recorded = False  # Track if we've already recorded usage for this session
         self.on_next = on_next
         self.on_back = on_back
         self.main_window = None
@@ -27,6 +31,8 @@ class ArrangementScreen:
         self.locked_videos = set()  # Track locked video indices (premium feature)
         self._metadata_cache = {}  # Cache metadata to avoid repeated extraction
         self.allow_duplicates = False  # Track if duplicates are allowed
+        self.change_indicator = None  # UI element to show arrangement changed status
+        self.usage_info_text = None  # UI element to show usage info
         
     def build(self):
         """Build and return arrangement screen layout (Frame 2)"""
@@ -155,41 +161,153 @@ class ArrangementScreen:
                 border_radius=5,
             )
         
-        # Allow duplicates toggle button
-        duplicate_toggle = ft.Container(
+        # Allow duplicates toggle button (hide for guests)
+        duplicate_toggle = None
+        if session_manager.is_authenticated():
+            duplicate_toggle = ft.Container(
+                content=ft.Row([
+                    ft.Switch(
+                        value=self.allow_duplicates,
+                        active_color=ft.Colors.BLUE_400,
+                        on_change=self._toggle_allow_duplicates,
+                    ),
+                    ft.Text("Allow Duplicates", size=14, color=ft.Colors.WHITE70),
+                ], spacing=10),
+                padding=ft.padding.symmetric(horizontal=10, vertical=5),
+                bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+                border_radius=5,
+            )
+        
+        # Check if user is a guest (not authenticated)
+        is_guest = not session_manager.is_authenticated()
+        
+        # Usage info for free users
+        usage_info_container = None
+        if not is_guest and not (session_manager.is_premium() or session_manager.is_admin()):
+            # Free user - show usage info
+            usage_info = usage_tracker.get_usage_info()
+            if not usage_info['unlimited']:
+                self.usage_info_text = ft.Text(
+                    f"Arrangements: {usage_info['used']}/{usage_info['limit']} (resets in {usage_info['reset_time']})",
+                    size=12,
+                    color=ft.Colors.BLUE_300 if usage_info['remaining'] > 0 else ft.Colors.RED_300,
+                )
+                usage_info_container = ft.Container(
+                    content=self.usage_info_text,
+                    padding=ft.padding.symmetric(horizontal=10, vertical=5),
+                    bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+                    border_radius=5,
+                )
+        
+        # Change indicator (shows when arrangement is modified and will use a trial)
+        change_text = "Arrangement modified"
+        if not is_guest and not (session_manager.is_premium() or session_manager.is_admin()):
+            # Free user - show trial usage warning
+            change_text = "Arranged - will use 1 trial when saved"
+        
+        self.change_indicator = ft.Container(
             content=ft.Row([
-                ft.Switch(
-                    value=self.allow_duplicates,
-                    active_color=ft.Colors.BLUE_400,
-                    on_change=self._toggle_allow_duplicates,
-                ),
-                ft.Text("Allow Duplicates", size=14, color=ft.Colors.WHITE70),
-            ], spacing=10),
+                ft.Icon(ft.Icons.EDIT, size=14, color=ft.Colors.ORANGE_400),
+                ft.Text(change_text, size=12, color=ft.Colors.ORANGE_400),
+            ], spacing=5),
             padding=ft.padding.symmetric(horizontal=10, vertical=5),
-            bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
+            bgcolor=ft.Colors.with_opacity(0.15, "#FFA500"),
             border_radius=5,
+            visible=False,  # Hidden by default
         )
+        
+        # Store the text widget reference for updates
+        self.change_indicator_text = self.change_indicator.content.controls[1]
+        
+        # Guest lockout overlay
+        guest_lockout = None
+        if is_guest:
+            guest_lockout = ft.Container(
+                content=ft.Column([
+                    ft.Icon(ft.Icons.LOCK_OUTLINED, size=64, color=ft.Colors.AMBER_400),
+                    ft.Text(
+                        "Arrangement Locked",
+                        size=24,
+                        weight=ft.FontWeight.BOLD,
+                        color=ft.Colors.WHITE,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Text(
+                        "Login to arrange your videos, change order, and use advanced features",
+                        size=14,
+                        color=ft.Colors.WHITE70,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    ft.Row([
+                        ft.ElevatedButton(
+                            "Login to Arrange",
+                            icon=ft.Icons.LOGIN,
+                            on_click=lambda _: self._go_back_to_login(),
+                            bgcolor=ft.Colors.BLUE_700,
+                            color=ft.Colors.WHITE,
+                        ),
+                        ft.OutlinedButton(
+                            "Continue to Merge",
+                            icon=ft.Icons.ARROW_FORWARD,
+                            on_click=lambda _: self.main_window.next_step() if self.main_window else None,
+                            color=ft.Colors.WHITE70,
+                        ),
+                    ], alignment=ft.MainAxisAlignment.CENTER, spacing=15),
+                ], 
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                alignment=ft.MainAxisAlignment.CENTER,
+                spacing=20),
+                bgcolor=ft.Colors.with_opacity(0.95, "#1A1A1A"),
+                border_radius=10,
+                padding=40,
+                alignment=ft.alignment.center,
+            )
+        
+        # Build header row controls
+        header_controls = []
+        if duplicate_toggle:
+            header_controls.append(duplicate_toggle)
+        if usage_info_container:
+            header_controls.append(usage_info_container)
+        if self.change_indicator:
+            header_controls.append(self.change_indicator)
+        if premium_indicator:
+            header_controls.append(premium_indicator)
+        
+        # Add sorting controls only if not guest
+        if not is_guest:
+            header_controls.extend([
+                ft.Text("Sort by:", color=ft.Colors.WHITE70, size=14),
+                arrange_by_dropdown,
+                ft.Text("Order:", color=ft.Colors.WHITE70, size=14),
+                order_dropdown,
+            ])
+        
+        # Main content - use Stack to overlay guest lockout if needed
+        if is_guest:
+            main_content = ft.Stack([
+                ft.Row([
+                    video_list_panel,
+                    video_preview_panel,
+                ], expand=True, spacing=10),
+                guest_lockout,
+            ], expand=True)
+        else:
+            main_content = ft.Row([
+                video_list_panel,
+                video_preview_panel,
+            ], expand=True, spacing=10)
         
         return ft.Container(
             content=ft.Column([
                 # Header
                 ft.Row([
                     ft.Text("Arrange Videos", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                    ft.Row([
-                        duplicate_toggle,
-                        premium_indicator if premium_indicator else ft.Container(),
-                        ft.Text("Sort by:", color=ft.Colors.WHITE70, size=14),
-                        arrange_by_dropdown,
-                        ft.Text("Order:", color=ft.Colors.WHITE70, size=14),
-                        order_dropdown,
-                    ], spacing=10),
+                    ft.Row(header_controls, spacing=10),
                 ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
                 
                 # Main content
-                ft.Row([
-                    video_list_panel,
-                    video_preview_panel,
-                ], expand=True, spacing=10),
+                main_content,
             ], spacing=15, expand=True),
             padding=20,
             expand=True,
@@ -205,6 +323,7 @@ class ArrangementScreen:
         else:
             # Check if user has premium/admin access
             has_lock_feature = session_manager.is_premium() or session_manager.is_admin()
+            is_guest = not session_manager.is_authenticated()
             
             for i, video_path in enumerate(self.videos):
                 video_name = Path(video_path).name
@@ -232,28 +351,28 @@ class ArrangementScreen:
                     )
                     action_buttons.append(lock_button)
                 
-                # Move up/down buttons
+                # Move up/down buttons (disabled for guests)
                 action_buttons.extend([
                     ft.IconButton(
                         icon=ft.Icons.KEYBOARD_ARROW_UP,
-                        icon_color=ft.Colors.WHITE70 if can_move_up else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.WHITE70 if (can_move_up and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._move_video(idx, idx - 1),
-                        disabled=not can_move_up,
-                        tooltip="Move up"
+                        disabled=not can_move_up or is_guest,
+                        tooltip="Move up" if not is_guest else "Login to arrange"
                     ),
                     ft.IconButton(
                         icon=ft.Icons.KEYBOARD_ARROW_DOWN,
-                        icon_color=ft.Colors.WHITE70 if can_move_down else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.WHITE70 if (can_move_down and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._move_video(idx, idx + 1),
-                        disabled=not can_move_down,
-                        tooltip="Move down"
+                        disabled=not can_move_down or is_guest,
+                        tooltip="Move down" if not is_guest else "Login to arrange"
                     ),
                     ft.IconButton(
                         icon=ft.Icons.COPY,
-                        icon_color=ft.Colors.BLUE_400 if self.allow_duplicates else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.BLUE_400 if (self.allow_duplicates and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._duplicate_video(idx),
-                        disabled=not self.allow_duplicates,
-                        tooltip="Duplicate video"
+                        disabled=not self.allow_duplicates or is_guest,
+                        tooltip="Duplicate video" if not is_guest else "Login to duplicate"
                     ),
                     ft.IconButton(
                         icon=ft.Icons.REMOVE_CIRCLE,
@@ -470,6 +589,7 @@ class ArrangementScreen:
             self.selected_video_index += 1
         
         self._update_video_list()
+        self._update_change_indicator()  # Check if arrangement changed
         if self.main_window:
             self.main_window.go_to_step(1)
 
@@ -495,6 +615,7 @@ class ArrangementScreen:
                 self.selected_video_index -= 1
             
             self._update_video_list()
+            self._update_change_indicator()  # Check if arrangement changed
             if self.main_window:
                 self.main_window.go_to_step(1)
 
@@ -564,6 +685,7 @@ class ArrangementScreen:
         self.selected_video_index = 0
 
         self._update_video_list()
+        self._update_change_indicator()  # Check if arrangement changed
         if self.main_window:
             self.main_window.go_to_step(1)
     
@@ -623,6 +745,7 @@ class ArrangementScreen:
                 self.page.snack_bar.open = True
             
             self._update_video_list()
+            self._update_change_indicator()  # Check if arrangement changed
             if self.main_window:
                 self.main_window.go_to_step(1)
     
@@ -635,6 +758,7 @@ class ArrangementScreen:
             self._remove_duplicates()
         
         self._update_video_list()
+        self._update_change_indicator()  # Check if arrangement changed
         if self.main_window:
             self.main_window.go_to_step(1)
     
@@ -684,6 +808,9 @@ class ArrangementScreen:
 
     def set_videos(self, videos):
         self.videos = videos or []
+        self.original_order = videos.copy() if videos else []  # Save original order
+        self.arrangement_changed = False  # Reset change flag
+        self.usage_recorded = False  # Reset usage tracking
         self.selected_video_index = 0
         self.locked_videos.clear()  # Clear locks when new videos are loaded
         self._metadata_cache.clear()  # Clear metadata cache for new video set
@@ -713,6 +840,92 @@ class ArrangementScreen:
                         pass  # Ignore errors, file might be in use
         except Exception:
             pass  # Ignore any errors
+    
+    def _check_arrangement_changed(self):
+        """Check if the current arrangement differs from original order"""
+        if len(self.videos) != len(self.original_order):
+            return True
+        
+        for i, video in enumerate(self.videos):
+            if video != self.original_order[i]:
+                return True
+        
+        return False
+    
+    def _update_change_indicator(self):
+        """Update the change indicator visibility based on arrangement status"""
+        if self.change_indicator:
+            changed = self._check_arrangement_changed()
+            
+            # Update arrangement_changed flag
+            self.arrangement_changed = changed
+            
+            # Show/hide indicator based on whether arrangement differs from original
+            self.change_indicator.visible = changed
+            
+            # Update text for free users to show trial usage warning
+            if changed and self.change_indicator_text:
+                is_guest = not session_manager.is_authenticated()
+                if not is_guest and not (session_manager.is_premium() or session_manager.is_admin()):
+                    # Free user - show trial warning
+                    usage_info = usage_tracker.get_usage_info()
+                    if usage_info and not usage_info['unlimited']:
+                        remaining = usage_info['remaining']
+                        self.change_indicator_text.value = f"Arranged - will use 1 trial when saved ({remaining} left)"
+                else:
+                    # Premium/Admin/Guest
+                    self.change_indicator_text.value = "Arrangement modified"
+            
+            if self.page:
+                self.page.update()
+    
+    def _go_back_to_login(self):
+        """Navigate back to start and trigger login"""
+        if self.main_window:
+            self.main_window.go_to_step(0)  # Go back to selection screen
+            # The user can then click login from the selection screen
+    
+    def record_arrangement_usage(self) -> bool:
+        """Record arrangement usage when user proceeds to next step (saves)"""
+        # Only record if arrangement was actually changed
+        if not self._check_arrangement_changed():
+            print("Arrangement unchanged - no usage recorded")
+            return True  # Return true to allow proceeding
+        
+        # Don't record for premium/admin
+        if session_manager.is_premium() or session_manager.is_admin():
+            return True
+        
+        # Don't record for guests
+        if not session_manager.is_authenticated():
+            return True
+        
+        # Check if user can still arrange before recording
+        if not usage_tracker.can_arrange():
+            print("Arrangement limit reached - cannot proceed")
+            return False
+        
+        # Record usage for free users
+        if not self.usage_recorded:
+            if usage_tracker.record_arrangement():
+                self.usage_recorded = True
+                print("Arrangement usage recorded")
+                
+                # Update usage info display
+                if self.usage_info_text:
+                    usage_info = usage_tracker.get_usage_info()
+                    if not usage_info['unlimited']:
+                        self.usage_info_text.value = f"Arrangements: {usage_info['used']}/{usage_info['limit']} (resets in {usage_info['reset_time']})"
+                        self.usage_info_text.color = ft.Colors.BLUE_300 if usage_info['remaining'] > 0 else ft.Colors.RED_300
+                        if self.page:
+                            self.page.update()
+                return True
+            else:
+                # Limit reached
+                print("Arrangement limit reached - cannot proceed")
+                return False
+        
+        return True
     
     def _show_premium_coming_soon(self):
         """Show coming soon message for premium feature"""
