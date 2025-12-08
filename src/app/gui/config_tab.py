@@ -436,7 +436,7 @@ class ConfigTab:
                 self.admin_users_table,
                 
                 # AUDIT LOGS SECTION - Build from real AdminDashboard
-                ft.Divider(height=30, thickness=3, color=ft.Colors.ORANGE_700),
+                ft.Divider(height=30),
                 self.real_admin_dashboard._build_audit_log_ui() if hasattr(self, 'real_admin_dashboard') else ft.Container(),
                 
             ], spacing=15, expand=True, scroll=ft.ScrollMode.AUTO),
