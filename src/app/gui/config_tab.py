@@ -271,9 +271,24 @@ class ConfigTab:
             self._show_success("Toggled admin view. Close and reopen settings.")
     
     def _build_admin_dashboard(self):
-        """Build the integrated admin dashboard"""
+        """Build the integrated admin dashboard using the real AdminDashboard class"""
+        from .admin_dashboard import AdminDashboard
         from access_control.firebase_service import get_firebase_service
-        from configs.config import Config
+        
+        print("[CONFIG_TAB] Building admin dashboard using AdminDashboard class")
+        
+        # Create AdminDashboard instance if not exists
+        if not hasattr(self, 'real_admin_dashboard'):
+            self.real_admin_dashboard = AdminDashboard(self.page)
+        
+        # Load users and build the dashboard
+        self.real_admin_dashboard.load_users()
+        
+        # Load audit logs immediately
+        if hasattr(self.real_admin_dashboard, '_load_audit_logs'):
+            self.real_admin_dashboard._load_audit_logs()
+        
+        admin_content = self.real_admin_dashboard.build()
         
         # Initialize admin dashboard components if not already done
         if not hasattr(self, 'admin_users_table'):
@@ -373,13 +388,13 @@ class ConfigTab:
         self.admin_loading_indicator = ft.ProgressRing(visible=False, width=20, height=20)
         self.admin_loading_container = ft.Container(
             content=self.admin_loading_indicator,
-            width=50,  # Fixed width to prevent shifting
+            width=50,
             alignment=ft.alignment.center
         )
         
         # Users table header with expand to use full width
         table_header = ft.Row([
-            ft.Container(width=50),  # Avatar space
+            ft.Container(width=50),
             ft.Container(ft.Text("Email", weight=ft.FontWeight.BOLD, size=12), expand=2),
             ft.Container(ft.Text("Name", weight=ft.FontWeight.BOLD, size=12), expand=2),
             ft.Container(ft.Text("Role", weight=ft.FontWeight.BOLD, size=12), expand=1),
@@ -419,6 +434,11 @@ class ConfigTab:
                 table_header,
                 ft.Divider(),
                 self.admin_users_table,
+                
+                # AUDIT LOGS SECTION - Build from real AdminDashboard
+                ft.Divider(height=30, thickness=3, color=ft.Colors.ORANGE_700),
+                self.real_admin_dashboard._build_audit_log_ui() if hasattr(self, 'real_admin_dashboard') else ft.Container(),
+                
             ], spacing=15, expand=True, scroll=ft.ScrollMode.AUTO),
             padding=20,
             expand=True,
@@ -1137,7 +1157,7 @@ class ConfigTab:
         if picture_url:
             user_avatar = ft.CircleAvatar(
                 foreground_image_src=picture_url,
-                content=ft.Icon(ft.Icons.PERSON, size=20),  # Fallback/loading icon
+                content=ft.Icon(ft.Icons.PERSON, size=20),
                 radius=20,
             )
         else:
@@ -1273,6 +1293,9 @@ class ConfigTab:
             if success:
                 self._show_success(f"Role changed from '{old_role}' to '{new_role}' for {email}")
                 self._admin_load_users()
+                # Refresh audit logs
+                if hasattr(self, 'real_admin_dashboard') and hasattr(self.real_admin_dashboard, '_load_audit_logs'):
+                    self.real_admin_dashboard._load_audit_logs()
             else:
                 self._show_error("Failed to change role")
         
@@ -1335,6 +1358,9 @@ class ConfigTab:
             if success:
                 self._show_success(f"Deleted user: {email}")
                 self._admin_load_users()
+                # Refresh audit logs
+                if hasattr(self, 'real_admin_dashboard') and hasattr(self.real_admin_dashboard, '_load_audit_logs'):
+                    self.real_admin_dashboard._load_audit_logs()
             else:
                 self._show_error(f"Failed to delete user: {email}")
         
@@ -1405,6 +1431,9 @@ class ConfigTab:
                     self.admin_new_user_email.value = ""
                     self.page.update()
                     self._admin_load_users()
+                    # Refresh audit logs
+                    if hasattr(self, 'real_admin_dashboard') and hasattr(self.real_admin_dashboard, '_load_audit_logs'):
+                        self.real_admin_dashboard._load_audit_logs()
                 else:
                     self._show_error("Failed to update user")
             else:
@@ -1425,6 +1454,9 @@ class ConfigTab:
                     self.admin_new_user_email.value = ""
                     self.page.update()
                     self._admin_load_users()
+                    # Refresh audit logs
+                    if hasattr(self, 'real_admin_dashboard') and hasattr(self.real_admin_dashboard, '_load_audit_logs'):
+                        self.real_admin_dashboard._load_audit_logs()
                 else:
                     self._show_error("Failed to create user")
         
@@ -1478,7 +1510,6 @@ class ConfigTab:
     def _admin_view_analytics(self, e):
         """View analytics placeholder"""
         self._show_success("Analytics feature coming soon!")
-    
     
     def _save_preset_to_database(self, e=None):
         """Save current template as a preset to Supabase database"""

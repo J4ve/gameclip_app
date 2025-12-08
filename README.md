@@ -323,7 +323,7 @@ pytest tests/test_integration.py -v
 - [x] Admin: promote/demote user roles (implemented with confirmation)
 - [x] Firestore user documents for persistent data
 - [x] Multi-layer security verification (UI + Backend + Firebase Rules)
-- [x] Audit logging system (skeleton implemented, TODO: persistence)
+- [x] Audit logging system
 
 **Profile Management (Self-Service)**
 - [x] View user profile (name, email, picture from Google)
@@ -379,14 +379,15 @@ pytest tests/test_integration.py -v
 - [x] Backend permission verification before critical operations
 - [ ] Permission matrix UI for admin configuration
 
-**Enhancement 4: Audit Log Viewer** 🔄
+**Enhancement 4: Audit Log Viewer** ✅
 - [x] Audit logging skeleton with structured data model
 - [x] Admin action logging (role changes, user modifications)
-- [ ] Persistent storage in Firestore 'admin_audit_logs' collection
-- [ ] Filter by user, date range, action type
-- [ ] Export audit logs to CSV
-- [ ] Admin-only access to audit trail UI
-- [ ] Real-time log streaming (optional)
+- [x] Persistent storage in Firestore 'admin_audit_logs' collection
+- [x] Filter by actor (admin email), target user, action type, and date range
+- [x] Export audit logs to CSV
+- [x] Admin-only access with multi-layer security verification
+- [x] Integrated into admin dashboard as dedicated tab
+- [x] Real-time log loading and refresh functionality
 
 #### Security Engineering
 **Threat Model (STRIDE)**
