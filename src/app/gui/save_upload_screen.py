@@ -10,7 +10,6 @@ import sys
 import os
 import json
 from access_control.session import session_manager
-from app.video_core.video_metadata import VideoMetadata, check_videos_compatibility
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -491,11 +490,18 @@ class SaveUploadScreen:
                         size=12,
                         color=ft.Colors.ORANGE_400
                     ),
-                    ft.TextButton(
-                        "Upgrade",
-                        on_click=lambda _: self._show_upgrade_message()
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.STAR, size=14, color=ft.Colors.AMBER_400),
+                            ft.Text("Unlock Premium", size=11, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400),
+                        ], spacing=3),
+                        padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                        bgcolor=ft.Colors.with_opacity(0.3, "#FFA500"),
+                        border_radius=6,
+                        border=ft.border.all(1, ft.Colors.AMBER_700),
+                        on_click=lambda _: self._show_premium_coming_soon(),
                     )
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.ORANGE_700),
                 border=ft.border.all(1, ft.Colors.ORANGE_400),
                 border_radius=5,
@@ -1150,55 +1156,9 @@ class SaveUploadScreen:
     def _show_upgrade_message(self):
         """Show upgrade message using snack bar"""
         if self.page:
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("Premium subscription coming soon! 🚀"),
+                bgcolor=ft.Colors.AMBER_700
+            )
             self.page.snack_bar.open = True
             self.page.update()
-    
-    def _show_compatibility_warning(self, issues: list):
-        """Show warning dialog for incompatible videos"""
-        dialog = ft.AlertDialog(
-            modal=True,
-            title=ft.Row([
-                ft.Icon(ft.Icons.WARNING, color=ft.Colors.ORANGE_400),
-                ft.Text("Video Compatibility Warning", color=ft.Colors.ORANGE_400),
-            ]),
-            content=ft.Column([
-                ft.Text(
-                    "The selected videos have different properties. For best results, videos should have:",
-                    size=12,
-                ),
-                ft.Container(
-                    content=ft.Column([
-                        ft.Text("• Same codec (e.g., H264, H265)", size=11, color=ft.Colors.CYAN_200),
-                        ft.Text("• Same resolution (e.g., 1920x1080)", size=11, color=ft.Colors.CYAN_200),
-                        ft.Text("• Same framerate (e.g., 30fps)", size=11, color=ft.Colors.CYAN_200),
-                    ], spacing=5),
-                    padding=ft.padding.only(left=10, top=10, bottom=10),
-                ),
-                ft.Divider(height=10),
-                ft.Text("Detected issues:", size=12, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_300),
-                ft.Container(
-                    content=ft.Column([
-                        ft.Text(f"• {issue}", size=11, color=ft.Colors.ORANGE_200)
-                        for issue in issues[:5]  # Show first 5 issues
-                    ], spacing=3),
-                    padding=ft.padding.only(left=10),
-                    height=min(len(issues) * 20, 100),
-                ),
-                ft.Divider(height=10),
-                ft.Text(
-                    "⚠️ Merging may take longer as videos need re-encoding to match properties.",
-                    size=11,
-                    color=ft.Colors.YELLOW_300,
-                    italic=True,
-                ),
-            ], spacing=8, tight=True, scroll=ft.ScrollMode.AUTO),
-            actions=[
-                ft.TextButton("OK", on_click=lambda _: self._close_dialog(dialog)),
-            ],
-            actions_alignment=ft.MainAxisAlignment.CENTER,
-        )
-        
-        self.page.overlay.append(dialog)
-        dialog.open = True
-        self.page.update()
