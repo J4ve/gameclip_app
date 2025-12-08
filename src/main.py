@@ -4,6 +4,7 @@ from app.gui.login_screen import LoginScreen
 from configs.config import Config
 from access_control.session import session_manager
 from configs.config import Config
+from app.services.ad_manager import ad_manager
 
 
 def main(page: ft.Page):
@@ -14,6 +15,9 @@ def main(page: ft.Page):
     page.window.height = Config.APP_HEIGHT
     page.window.min_width = 800
     page.window.min_height = 600
+    
+    # Start ad rotation
+    ad_manager.start_rotation()
     
     # Handle login completion and show main app
     def handle_login_complete(user_info, role):

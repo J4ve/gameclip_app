@@ -11,6 +11,7 @@ import os
 import json
 from access_control.session import session_manager
 from app.video_core.video_metadata import VideoMetadata, check_videos_compatibility
+from app.services.ad_manager import ad_manager
 
 # Add src/ to sys.path so we can import uploader modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..')))
@@ -491,11 +492,18 @@ class SaveUploadScreen:
                         size=12,
                         color=ft.Colors.ORANGE_400
                     ),
-                    ft.TextButton(
-                        "Upgrade",
-                        on_click=lambda _: self._show_upgrade_message()
+                    ft.Container(
+                        content=ft.Row([
+                            ft.Icon(ft.Icons.STAR, size=14, color=ft.Colors.AMBER_400),
+                            ft.Text("Unlock Premium", size=11, weight=ft.FontWeight.BOLD, color=ft.Colors.AMBER_400),
+                        ], spacing=3),
+                        padding=ft.padding.symmetric(horizontal=10, vertical=4),
+                        bgcolor=ft.Colors.with_opacity(0.3, "#FFA500"),
+                        border_radius=6,
+                        border=ft.border.all(1, ft.Colors.AMBER_700),
+                        on_click=lambda _: self._show_premium_coming_soon(),
                     )
-                ], alignment=ft.MainAxisAlignment.CENTER),
+                ], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
                 bgcolor=ft.Colors.with_opacity(0.2, ft.Colors.ORANGE_700),
                 border=ft.border.all(1, ft.Colors.ORANGE_400),
                 border_radius=5,
@@ -1150,9 +1158,16 @@ class SaveUploadScreen:
     def _show_upgrade_message(self):
         """Show upgrade message using snack bar"""
         if self.page:
-            self.page.snack_bar = ft.SnackBar(content=ft.Text("Upgrade feature coming soon!"))
+            self.page.snack_bar = ft.SnackBar(
+                content=ft.Text("Premium subscription coming soon! 🚀"),
+                bgcolor=ft.Colors.AMBER_700
+            )
             self.page.snack_bar.open = True
             self.page.update()
+    
+    def _show_premium_coming_soon(self):
+        """Show coming soon message for premium feature"""
+        self._show_upgrade_message()
     
     def _show_compatibility_warning(self, issues: list):
         """Show warning dialog for incompatible videos"""
