@@ -24,7 +24,6 @@ class Permission(Enum):
     MERGE_VIDEOS = "merge_videos"
     
     # Feature permissions
-    NO_WATERMARK = "no_watermark"
     NO_ADS = "no_ads"
     UNLIMITED_MERGES = "unlimited_merges"
     
@@ -43,7 +42,6 @@ class RoleLimits:
     max_merge_count_per_day: int = -1  # -1 = unlimited
     max_video_length_minutes: int = -1  # -1 = unlimited
     max_file_size_mb: int = -1  # -1 = unlimited
-    watermark_enabled: bool = False
     ads_enabled: bool = False
 
 
@@ -83,7 +81,7 @@ class Role:
 
 
 class GuestRole(Role):
-    """Guest role - limited features with watermark and ads"""
+    """Guest role - limited features and ads"""
     
     def __init__(self):
         permissions = {
@@ -97,7 +95,6 @@ class GuestRole(Role):
             max_merge_count_per_day=-1,  # -1 = unlimited (currently no limit)
             max_video_length_minutes=10,
             max_file_size_mb=100,
-            watermark_enabled=True,
             ads_enabled=True
         )
         
@@ -105,17 +102,16 @@ class GuestRole(Role):
             role_type=RoleType.GUEST,
             permissions=permissions,
             limits=limits,
-            description="Guest user with limited features, watermark, and ads"
+            description="Guest user with limited features and ads"
         )
 
 
 class FreeRole(Role):
-    """Free tier user - can upload but has ads"""
+    """Free tier user - can save but cannot upload to YouTube"""
     
     def __init__(self):
         permissions = {
             Permission.SAVE_VIDEO,
-            Permission.UPLOAD_VIDEO,
             Permission.MERGE_VIDEOS,
         }
         
@@ -125,7 +121,6 @@ class FreeRole(Role):
             max_merge_count_per_day=-1,  # -1 = unlimited (currently no limit)
             max_video_length_minutes=30,
             max_file_size_mb=500,
-            watermark_enabled=False,
             ads_enabled=True
         )
         
@@ -133,19 +128,18 @@ class FreeRole(Role):
             role_type=RoleType.FREE,
             permissions=permissions,
             limits=limits,
-            description="Free tier user with upload capability but has ads"
+            description="Free tier user - can save videos locally but cannot upload to YouTube"
         )
 
 
 class PremiumRole(Role):
-    """Premium user - full features, no ads, no watermark"""
+    """Premium user - full features, no ads """
     
     def __init__(self):
         permissions = {
             Permission.SAVE_VIDEO,
             Permission.UPLOAD_VIDEO,
             Permission.MERGE_VIDEOS,
-            Permission.NO_WATERMARK,
             Permission.NO_ADS,
             Permission.UNLIMITED_MERGES,
         }
@@ -155,7 +149,6 @@ class PremiumRole(Role):
             max_merge_count_per_day=-1,  # Unlimited
             max_video_length_minutes=-1,  # Unlimited
             max_file_size_mb=-1,  # Unlimited
-            watermark_enabled=False,
             ads_enabled=False
         )
         
@@ -163,7 +156,7 @@ class PremiumRole(Role):
             role_type=RoleType.PREMIUM,
             permissions=permissions,
             limits=limits,
-            description="Premium user with full features, no ads, no watermark"
+            description="Premium user with full features, no ads"
         )
 
 
@@ -175,7 +168,6 @@ class AdminRole(Role):
             Permission.SAVE_VIDEO,
             Permission.UPLOAD_VIDEO,
             Permission.MERGE_VIDEOS,
-            Permission.NO_WATERMARK,
             Permission.NO_ADS,
             Permission.UNLIMITED_MERGES,
             Permission.MANAGE_USERS,
@@ -189,7 +181,6 @@ class AdminRole(Role):
             max_merge_count_per_day=-1,
             max_video_length_minutes=-1,
             max_file_size_mb=-1,
-            watermark_enabled=False,
             ads_enabled=False
         )
         

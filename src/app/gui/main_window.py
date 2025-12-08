@@ -9,9 +9,11 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
-from .admin_dashboard import AdminDashboardScreen
+from .admin_dashboard import AdminDashboard
 from access_control.session import session_manager
 from access_control.roles import Permission
+from access_control.usage_tracker import usage_tracker
+from app.services.ad_manager import ad_manager
 import sys
 import platform
 from datetime import datetime
@@ -20,14 +22,31 @@ from datetime import datetime
 class MainWindow:
     """Main application window with stepper navigation"""
     
+    @staticmethod
+    def show_welcome_message(page: ft.Page, user_info: dict, role):
+        """Show formatted welcome message"""
+        # Get display name - for guests just show "Guest", for others show their actual name
+        if role.name.lower() == 'guest':
+            welcome_name = 'Guest'
+        else:
+            welcome_name = user_info.get('name') or user_info.get('email', 'User')
+        
+        snack_bar = ft.SnackBar(
+            content=ft.Text(f"Welcome, {welcome_name}!"),
+            bgcolor=ft.Colors.BLUE_700,
+        )
+        page.overlay.append(snack_bar)
+        snack_bar.open = True
+        page.update()
+    
     def __init__(self, page: ft.Page):
         self.page = page
         self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
         self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
-        self.selection_screen = SelectionScreen(page=self.page) #selection screen
+        self.selection_screen = SelectionScreen(page=self.page, parent_window=self) #selection screen
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
-        self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+        self.save_upload_screen = SaveUploadScreen(page=self.page, parent_window=self) #save/upload screen
         
         # Admin dashboard (only initialized if user has permission)
         self.admin_dashboard = None
@@ -61,7 +80,8 @@ class MainWindow:
             margin=ft.margin.only(bottom=22), # 22 lol perfect pantay na haha
         )
         
-        # Step 2: Arrange and Merge
+        # Step 2: Arrange (or skip for guests)
+        arrange_label = "Arrange Videos" if session_manager.is_authenticated() else "Arrange (Login to enable)"
         self.step2_indicator = ft.Column([
             ft.Container(
                 content=ft.Text("2", color=ft.Colors.WHITE),  # Number in circle
@@ -71,7 +91,7 @@ class MainWindow:
                 border_radius=20,
                 alignment=ft.alignment.center,
             ),
-            ft.Text("Arrange and Merge", size=12),  # Label below
+            ft.Text(arrange_label, size=12),  # Label below
         ], 
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         spacing=5,
@@ -138,10 +158,42 @@ class MainWindow:
             
             # Pass selected videos and page reference to arrangement screen when moving to step 1
             if self.current_step == 1:
+                # Check if user is a guest - skip arrangement screen for guests
+                if not session_manager.is_authenticated():
+                    # Guest user - skip directly to save/upload (merge)
+                    print("Guest user detected - skipping arrangement screen")
+                    self.current_step = 2  # Jump to step 2
+                    self.save_upload_screen.set_videos(self.selection_screen.selected_files)
+                    self.save_upload_screen.main_window = self
+                    self.go_to_step(2)
+                    return
+                
+                # Authenticated user - proceed to arrangement
                 self.arrangement_screen.set_videos(self.selection_screen.selected_files)
+                # Save original order from selection screen
+                self.selection_screen.original_order = self.selection_screen.selected_files.copy()
                 self.arrangement_screen.main_window = self  # Pass reference to main window
 
             elif self.current_step == 2:
+                # Record arrangement usage before proceeding (only if authenticated and changed)
+                if session_manager.is_authenticated() and hasattr(self.arrangement_screen, 'record_arrangement_usage'):
+                    if not self.arrangement_screen.record_arrangement_usage():
+                        # Limit reached - show error and don't proceed
+                        usage_info = usage_tracker.get_usage_info()
+                        snackbar = ft.SnackBar(
+                            content=ft.Text(
+                                f"Daily arrangement limit reached ({usage_info['limit']}/{usage_info['limit']}). You can still arrange but cannot save. Resets in {usage_info['reset_time']}.",
+                                color=ft.Colors.WHITE
+                            ),
+                            bgcolor=ft.Colors.RED_700,
+                            duration=5000,
+                        )
+                        self.page.overlay.append(snackbar)
+                        snackbar.open = True
+                        self.page.update()
+                        self.current_step = 1  # Stay on arrangement screen
+                        return
+                
                 self.save_upload_screen.set_videos(self.arrangement_screen.videos)
                 self.save_upload_screen.main_window = self
             
@@ -150,6 +202,41 @@ class MainWindow:
     def previous_step(self):
         """Move to previous wizard step"""
         if self.current_step > 0:
+            # Sync videos from arrangement back to selection when going back
+            if self.current_step == 1:
+                self.selection_screen.selected_files = self.arrangement_screen.videos.copy()
+                # Rebuild the display
+                from app.video_core.video_metadata import VideoMetadata
+                from pathlib import Path
+                self.selection_screen.file_list.controls = []
+                for f in self.selection_screen.selected_files:
+                    metadata = VideoMetadata(f)
+                    metadata_text = metadata.get_short_info()
+                    
+                    self.selection_screen.file_list.controls.append(
+                        ft.Column([
+                            ft.Row([
+                                ft.Icon(ft.Icons.VIDEO_FILE, size=16),
+                                ft.Column([
+                                    ft.Text(Path(f).name, size=12, weight=ft.FontWeight.BOLD),
+                                    ft.Text(metadata_text, size=10, color=ft.Colors.GREY_400),
+                                ], spacing=2, expand=True),
+                                ft.IconButton(
+                                    icon=ft.Icons.CLOSE,
+                                    icon_size=16,
+                                    on_click=lambda _, path=f: self.selection_screen.remove_file(path)
+                                ),
+                            ]),
+                        ], spacing=5)
+                    )
+            
+            # Guest users: skip arrangement screen when going backwards too
+            if self.current_step == 2 and not session_manager.is_authenticated():
+                print("Guest user detected - skipping arrangement screen (going back)")
+                self.current_step = 0
+                self.go_to_step(0)
+                return
+            
             self.current_step -= 1
             self.go_to_step(self.current_step)
     
@@ -288,6 +375,15 @@ class MainWindow:
             bottom=40,
             visible=(self.current_step != 2) # pag nasa last step, next button will disappear
         )
+        
+        # Floating horizontal banner ad (bottom-left)
+        floating_ad_banner = ad_manager.create_horizontal_banner_ad(self.page, width=600, height=80)
+        floating_ad_container = ft.Container(
+            content=floating_ad_banner,
+            left=30,
+            bottom=40,
+            visible=ad_manager.should_show_ads(),
+        )
 
         # Back button at top left, small, icon only
         self.back_button = ft.Container(
@@ -312,7 +408,7 @@ class MainWindow:
         if self.current_view == "admin":
             # Show admin dashboard instead of wizard
             if self.admin_dashboard is None:
-                self.admin_dashboard = AdminDashboardScreen(self.page)
+                self.admin_dashboard = AdminDashboard(self.page)
             # Always reload users when switching to admin view
             self.admin_dashboard.load_users()
             admin_content = self.admin_dashboard.build()
@@ -335,6 +431,7 @@ class MainWindow:
                     ],
                     expand=True,
                 ),
+                floating_ad_container,  # Floating ad banner at bottom left
                 self.next_button,  # Fixed position overlay
                 user_section,  # User info at top right
             ]
@@ -387,12 +484,7 @@ class MainWindow:
                 self.page.update()
                 
                 # Show welcome message
-                snack_bar = ft.SnackBar(
-                    content=ft.Text(f"Welcome, {user_info.get('name') or user_info.get('email', 'Guest')}!")
-                )
-                self.page.overlay.append(snack_bar)
-                snack_bar.open = True
-                self.page.update()
+                MainWindow.show_welcome_message(self.page, user_info, role)
             except Exception as ex:
                 print(f"Error recreating main window: {ex}")
                 self.page.add(ft.Text(f"Error: {str(ex)}", color=ft.Colors.RED))
@@ -466,7 +558,7 @@ class MainWindow:
             ], spacing=10),
             content=ft.Container(
                 content=config_content,
-                width=900,
+                width=1100,
                 height=650,
             ),
             actions=actions,

@@ -37,7 +37,6 @@ class TestPermission:
     
     def test_feature_permissions_exist(self):
         """Test that feature permissions are defined"""
-        assert Permission.NO_WATERMARK.value == "no_watermark"
         assert Permission.NO_ADS.value == "no_ads"
         assert Permission.UNLIMITED_MERGES.value == "unlimited_merges"
     
@@ -58,7 +57,6 @@ class TestRoleLimits:
         assert limits.max_merge_count_per_day == -1  # Unlimited
         assert limits.max_video_length_minutes == -1  # Unlimited
         assert limits.max_file_size_mb == -1  # Unlimited
-        assert limits.watermark_enabled is False
         assert limits.ads_enabled is False
     
     def test_custom_limits(self):
@@ -67,13 +65,11 @@ class TestRoleLimits:
             max_merge_count_per_day=10,
             max_video_length_minutes=30,
             max_file_size_mb=500,
-            watermark_enabled=True,
             ads_enabled=True
         )
         assert limits.max_merge_count_per_day == 10
         assert limits.max_video_length_minutes == 30
         assert limits.max_file_size_mb == 500
-        assert limits.watermark_enabled is True
         assert limits.ads_enabled is True
 
 
@@ -96,13 +92,7 @@ class TestGuestRole:
     
     def test_guest_lacks_premium_features(self, guest_role):
         """Test that guest doesn't have premium features"""
-        assert not guest_role.has_permission(Permission.NO_WATERMARK)
         assert not guest_role.has_permission(Permission.NO_ADS)
-    
-    def test_guest_has_watermark_and_ads(self, guest_role):
-        """Test that guest has watermark and ads enabled"""
-        assert guest_role.limits.watermark_enabled is True
-        assert guest_role.limits.ads_enabled is True
     
     def test_guest_video_length_limit(self, guest_role):
         """Test guest video length limit"""
@@ -130,10 +120,6 @@ class TestFreeRole:
         assert free_role.has_permission(Permission.SAVE_VIDEO)
         assert free_role.has_permission(Permission.MERGE_VIDEOS)
     
-    def test_free_no_watermark(self, free_role):
-        """Test that free users don't have watermark"""
-        assert free_role.limits.watermark_enabled is False
-    
     def test_free_has_ads(self, free_role):
         """Test that free users still see ads"""
         assert free_role.limits.ads_enabled is True
@@ -159,13 +145,11 @@ class TestPremiumRole:
     
     def test_premium_has_premium_features(self, premium_role):
         """Test that premium has premium features"""
-        assert premium_role.has_permission(Permission.NO_WATERMARK)
         assert premium_role.has_permission(Permission.NO_ADS)
         assert premium_role.has_permission(Permission.UNLIMITED_MERGES)
     
     def test_premium_no_restrictions(self, premium_role):
         """Test that premium has no limits"""
-        assert premium_role.limits.watermark_enabled is False
         assert premium_role.limits.ads_enabled is False
         assert premium_role.limits.max_merge_count_per_day == -1  # Unlimited
         assert premium_role.limits.max_video_length_minutes == -1  # Unlimited

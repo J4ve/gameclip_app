@@ -50,6 +50,10 @@ class CacheProcessor:
         """
         Create cached merged video with downscaling
         
+        Intelligently decides whether to generate preview based on video codecs.
+        - Same codec videos: Fast stream copy (instant preview)
+        - Mixed codecs: Skip preview (too slow to re-encode)
+        
         Args:
             video_paths: List of video file paths to merge and cache
             cache_path: Base path for cache output (without extension)
@@ -57,13 +61,25 @@ class CacheProcessor:
             completion_callback: Function(success, message, manifest_or_file_path)
         
         Returns:
-            Path to cached video or HLS manifest
+            Path to cached video or None if skipped
         """
         if not video_paths:
             if completion_callback:
                 completion_callback(False, "No videos to cache", None)
             return None
         
+        # Check if all videos have the same codec
+        if self._has_mixed_codecs(video_paths):
+            # Skip preview for mixed properties - too slow or causes issues
+            if completion_callback:
+                completion_callback(
+                    True, 
+                    "Preview skipped - videos have different properties (codec/resolution/framerate). Use \"Save Video\" for final merge.", 
+                    None
+                )
+            return None
+        
+        # Same codec - use fast stream copy for instant preview
         # Run in separate thread
         thread = threading.Thread(
             target=self._cache_thread,
@@ -82,51 +98,71 @@ class CacheProcessor:
         completion_callback: Optional[Callable]
     ):
         """Internal thread function for caching"""
+        print("[CACHE_PROCESSOR] Starting cache thread")
         self.is_caching = True
         
         try:
             # Ensure cache directory exists
+            print("[CACHE_PROCESSOR] Creating cache directory...")
             cache_dir = Path(cache_path).parent
             cache_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[CACHE_PROCESSOR] Cache directory ready: {cache_dir}")
             
             if progress_callback:
                 progress_callback(10, "Preparing cache merge...")
             
             # Create concat file
+            print("[CACHE_PROCESSOR] Creating concat file...")
             concat_file = self._create_concat_file(video_paths)
+            print(f"[CACHE_PROCESSOR] Concat file created: {concat_file}")
             
             if progress_callback:
                 progress_callback(20, "Building merge stream...")
             
             # Get video dimensions for downscaling calculation
+            print("[CACHE_PROCESSOR] Getting video dimensions...")
             width, height = self._get_video_dimensions(video_paths[0])
+            print(f"[CACHE_PROCESSOR] Original dimensions: {width}x{height}")
+            
             downscaled_width, downscaled_height = self._calculate_downscale_dims(width, height)
+            print(f"[CACHE_PROCESSOR] Target dimensions: {downscaled_width}x{downscaled_height}")
             
             if progress_callback:
                 progress_callback(30, f"Caching at {downscaled_width}x{downscaled_height}...")
             
             # Build FFmpeg command for cached video
+            print("[CACHE_PROCESSOR] Building FFmpeg command...")
             cmd = self._build_ffmpeg_command(
                 concat_file,
                 cache_path,
                 downscaled_width,
                 downscaled_height
             )
+            print(f"[CACHE_PROCESSOR] Command: ffmpeg -f concat -safe 0 ...")
             
             # Execute FFmpeg
+            print("[CACHE_PROCESSOR] Starting FFmpeg process...")
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True
             )
+            print(f"[CACHE_PROCESSOR] FFmpeg process started (PID: {process.pid})")
             
             self.current_process = process
             
             # Track progress
+            print("[CACHE_PROCESSOR] Getting total duration...")
             total_duration = self._get_total_duration(video_paths)
+            print(f"[CACHE_PROCESSOR] Total duration: {total_duration}s")
             
+            print("[CACHE_PROCESSOR] Reading FFmpeg output...")
+            line_count = 0
             for line in process.stderr:
+                line_count += 1
+                if line_count % 30 == 0:  # Print every 30th line to avoid spam
+                    print(f"[CACHE_PROCESSOR] Processing... (line {line_count})")
                 if progress_callback and "time=" in line:
                     current_time = self._parse_time_from_ffmpeg(line)
                     if current_time and total_duration:
@@ -134,14 +170,24 @@ class CacheProcessor:
                         progress_callback(percentage, f"Caching... {percentage}%")
             
             # Wait for process
+            print("[CACHE_PROCESSOR] Waiting for FFmpeg to complete...")
             process.wait()
+            print(f"[CACHE_PROCESSOR] FFmpeg finished with return code: {process.returncode}")
             
-            # Clean up concat file
+            # Clean up concat file (with retry for Windows file locks)
+            print("[CACHE_PROCESSOR] Cleaning up concat file...")
             if os.path.exists(concat_file):
-                os.remove(concat_file)
+                try:
+                    import time
+                    time.sleep(0.1)  # Brief delay for Windows to release file
+                    os.remove(concat_file)
+                    print("[CACHE_PROCESSOR] Concat file removed")
+                except Exception as e:
+                    print(f"[CACHE_PROCESSOR] Concat file cleanup skipped: {e}")
             
             if process.returncode == 0:
                 output_file = f"{cache_path}.mp4"
+                print(f"[CACHE_PROCESSOR] Cache successful! Output: {output_file}")
                 
                 if progress_callback:
                     progress_callback(100, "Cache complete!")
@@ -151,35 +197,88 @@ class CacheProcessor:
                 
                 self.cached_files.append(output_file)
             else:
+                print(f"[CACHE_PROCESSOR] Cache failed with return code {process.returncode}")
                 error_output = process.stderr.read() if hasattr(process.stderr, 'read') else "Unknown error"
                 if completion_callback:
                     completion_callback(False, f"Cache process failed: {error_output}", None)
                     
         except Exception as e:
+            print(f"[CACHE_PROCESSOR] ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
             if completion_callback:
                 completion_callback(False, f"Error: {str(e)}", None)
         finally:
+            print("[CACHE_PROCESSOR] Cleaning up...")
             self.is_caching = False
             self.current_process = None
+            print("[CACHE_PROCESSOR] Cache thread finished")
+    
+    def _has_mixed_codecs(self, video_paths: list) -> bool:
+        """
+        Check if videos have different codecs, resolutions, or framerates.
+        Stream copy only works reliably when ALL properties match.
+        """
+        try:
+            video_properties = []
+            for video_path in video_paths:
+                cmd = [
+                    "ffprobe",
+                    "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "stream=codec_name,width,height,r_frame_rate",
+                    "-of", "json",
+                    video_path
+                ]
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                
+                import json
+                data = json.loads(result.stdout)
+                stream = data['streams'][0]
+                
+                # Create a tuple of (codec, width, height, framerate)
+                props = (
+                    stream['codec_name'],
+                    stream['width'],
+                    stream['height'],
+                    stream['r_frame_rate']
+                )
+                video_properties.append(props)
+            
+            # Check if all properties are identical
+            first_props = video_properties[0]
+            for props in video_properties[1:]:
+                if props != first_props:
+                    print(f"[CACHE_PROCESSOR] Mixed properties detected:")
+                    print(f"  First video: codec={first_props[0]}, {first_props[1]}x{first_props[2]}, {first_props[3]} fps")
+                    print(f"  Other video: codec={props[0]}, {props[1]}x{props[2]}, {props[3]} fps")
+                    return True
+            
+            print(f"[CACHE_PROCESSOR] All videos match: codec={first_props[0]}, {first_props[1]}x{first_props[2]}, {first_props[3]} fps")
+            return False
+            
+        except Exception as e:
+            print(f"[CACHE_PROCESSOR] Property detection failed: {e}")
+            # If detection fails, assume mixed (safer - skip preview)
+            return True
     
     def _build_ffmpeg_command(self, concat_file: str, cache_path: str, width: int, height: int) -> list:
-        """Build FFmpeg command for caching with downscaling using fMP4"""
+        """
+        Build FFmpeg command for caching - FAST stream copy for same-codec videos
+        
+        This method is only called when all videos have the same codec.
+        Uses stream copy for instant preview (1-2 seconds).
+        """
         output_file = f"{cache_path}.mp4"
         
-        scale_filter = f"scale={width}:{height}" if self.settings.downscale_enabled else "null"
-        
-        # fMP4 (fragmented MP4) allows preview while file is still being written
-        # -movflags faststart writes stream headers early for progressive download
+        # Stream copy - instant for same-codec videos!
         cmd = [
             "ffmpeg",
             "-f", "concat",
             "-safe", "0",
             "-i", concat_file,
-            "-vf", scale_filter,  # Scale/downscale video
-            "-c:v", "libx264",
-            "-c:a", "aac",
-            "-preset", self.settings.preset,  # Fast encoding for cache
-            "-movflags", "faststart",  # Write stream headers early (fMP4 compatible)
+            "-c", "copy",  # No re-encoding - instant!
+            "-movflags", "+faststart",
             "-y",
             output_file
         ]

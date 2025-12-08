@@ -223,7 +223,6 @@ class TestRoleUpgradeFlow:
         
         # Verify premium benefits
         assert session.has_permission('no_ads') is True
-        assert session.has_permission('no_watermark') is True
         assert session.current_role.limits.ads_enabled is False
     
     def test_role_upgrade_preserves_session(self):

@@ -592,15 +592,18 @@ class FirebaseService:
             return False
     
     def get_audit_logs(self, limit: int = 100, admin_filter: str = None, 
-                       action_filter: str = None, start_date: datetime = None) -> list:
+                       action_filter: str = None, target_user_filter: str = None,
+                       start_date: datetime = None, end_date: datetime = None) -> list:
         """
         Retrieve audit logs from Firestore for admin review
         
         Args:
             limit: Maximum number of logs to return (default 100)
-            admin_filter: Filter by admin email (optional)
-            action_filter: Filter by action type (optional)
+            admin_filter: Filter by admin email (actor who performed the action)
+            action_filter: Filter by action type (role_change, user_creation, etc.)
+            target_user_filter: Filter by target user email (user who was affected)
             start_date: Only return logs after this date (optional)
+            end_date: Only return logs before this date (optional)
             
         Returns:
             list: List of audit log dictionaries, newest first
@@ -615,14 +618,18 @@ class FirebaseService:
             )
             
             # Apply filters
-            if admin_filter:
-                query = query.where('admin_email', '==', admin_filter)
+            # Note: Firestore has limitations on multiple inequality filters
+            # If using multiple date filters, they must be on the same field
             
-            if action_filter:
-                query = query.where('action', '==', action_filter)
+            # CLIENT-SIDE FILTERING ADAPTATION:
+            # We only apply date filters in the query to avoid composite index requirements
+            # (e.g. admin_email + timestamp) which cause 400 errors without manual indexing.
             
             if start_date:
                 query = query.where('timestamp', '>=', start_date)
+            
+            if end_date:
+                query = query.where('timestamp', '<=', end_date)
             
             # Execute query with limit
             docs = query.limit(limit).stream()
@@ -630,6 +637,17 @@ class FirebaseService:
             logs = []
             for doc in docs:
                 log_data = doc.to_dict()
+                
+                # Apply client-side filters
+                if admin_filter and log_data.get('admin_email') != admin_filter:
+                    continue
+                
+                if action_filter and log_data.get('action') != action_filter:
+                    continue
+                
+                if target_user_filter and log_data.get('target_user') != target_user_filter:
+                    continue
+                
                 log_data['id'] = doc.id  # Include document ID
                 logs.append(log_data)
             
