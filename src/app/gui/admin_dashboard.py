@@ -976,7 +976,7 @@ class AdminDashboard:
                 self.audit_log_count.value = f"Showing {len(self.audit_logs_data)} log entries"
         
         except Exception as e:
-            print(f"[ADMIN] Error loading audit logs: {e}")
+            print(f"[ERROR] Error loading audit logs: {e}")
             self._show_error(f"Failed to load audit logs: {str(e)}")
         
         finally:
@@ -992,7 +992,14 @@ class AdminDashboard:
         
         if not self.audit_logs_data:
             self.audit_logs_table.rows = [
-                ft.DataRow(cells=[ft.DataCell(ft.Text("No logs found", color=ft.Colors.GREY_500))])
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text("No logs found", color=ft.Colors.GREY_500)),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                    ft.DataCell(ft.Text("")),
+                ])
             ]
             if update_ui:
                 self.page.update()
@@ -1007,8 +1014,10 @@ class AdminDashboard:
             else:
                 timestamp_str = str(timestamp)
             
-            # Status icon
-            status_icon = "✅" if log.get('success', True) else "❌"
+            # Status
+            is_success = log.get('success', True)
+            status_text = "Success" if is_success else "Failed"
+            status_color = ft.Colors.GREEN if is_success else ft.Colors.RED
             
             # Details summary
             details = log.get('details', {})
@@ -1030,13 +1039,14 @@ class AdminDashboard:
                         weight=ft.FontWeight.BOLD
                     )),
                     ft.DataCell(ft.Text(log.get('target_user', 'N/A'), size=10)),
-                    ft.DataCell(ft.Text(status_icon, size=12)),
+                    ft.DataCell(ft.Text(status_text, size=10, color=status_color, weight=ft.FontWeight.BOLD)),
                     ft.DataCell(ft.Text(details_str, size=9, color=ft.Colors.GREY_400)),
                 ]
             ))
         
         self.audit_logs_table.rows = rows
         if update_ui:
+            print("🔵 [ADMIN] Updating page with new table rows")
             self.page.update()
     
     def _export_audit_logs(self, e):
