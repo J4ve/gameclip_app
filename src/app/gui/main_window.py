@@ -12,6 +12,7 @@ from .config_tab import ConfigTab
 from .admin_dashboard import AdminDashboard
 from access_control.session import session_manager
 from access_control.roles import Permission
+from access_control.usage_tracker import usage_tracker
 from app.services.ad_manager import ad_manager
 import sys
 import platform
@@ -79,7 +80,8 @@ class MainWindow:
             margin=ft.margin.only(bottom=22), # 22 lol perfect pantay na haha
         )
         
-        # Step 2: Arrange and Merge
+        # Step 2: Arrange (or skip for guests)
+        arrange_label = "Arrange Videos" if session_manager.is_authenticated() else "Arrange (Login to enable)"
         self.step2_indicator = ft.Column([
             ft.Container(
                 content=ft.Text("2", color=ft.Colors.WHITE),  # Number in circle
@@ -89,7 +91,7 @@ class MainWindow:
                 border_radius=20,
                 alignment=ft.alignment.center,
             ),
-            ft.Text("Arrange and Merge", size=12),  # Label below
+            ft.Text(arrange_label, size=12),  # Label below
         ], 
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         spacing=5,
@@ -156,10 +158,42 @@ class MainWindow:
             
             # Pass selected videos and page reference to arrangement screen when moving to step 1
             if self.current_step == 1:
+                # Check if user is a guest - skip arrangement screen for guests
+                if not session_manager.is_authenticated():
+                    # Guest user - skip directly to save/upload (merge)
+                    print("Guest user detected - skipping arrangement screen")
+                    self.current_step = 2  # Jump to step 2
+                    self.save_upload_screen.set_videos(self.selection_screen.selected_files)
+                    self.save_upload_screen.main_window = self
+                    self.go_to_step(2)
+                    return
+                
+                # Authenticated user - proceed to arrangement
                 self.arrangement_screen.set_videos(self.selection_screen.selected_files)
+                # Save original order from selection screen
+                self.selection_screen.original_order = self.selection_screen.selected_files.copy()
                 self.arrangement_screen.main_window = self  # Pass reference to main window
 
             elif self.current_step == 2:
+                # Record arrangement usage before proceeding (only if authenticated and changed)
+                if session_manager.is_authenticated() and hasattr(self.arrangement_screen, 'record_arrangement_usage'):
+                    if not self.arrangement_screen.record_arrangement_usage():
+                        # Limit reached - show error and don't proceed
+                        usage_info = usage_tracker.get_usage_info()
+                        snackbar = ft.SnackBar(
+                            content=ft.Text(
+                                f"Daily arrangement limit reached ({usage_info['limit']}/{usage_info['limit']}). You can still arrange but cannot save. Resets in {usage_info['reset_time']}.",
+                                color=ft.Colors.WHITE
+                            ),
+                            bgcolor=ft.Colors.RED_700,
+                            duration=5000,
+                        )
+                        self.page.overlay.append(snackbar)
+                        snackbar.open = True
+                        self.page.update()
+                        self.current_step = 1  # Stay on arrangement screen
+                        return
+                
                 self.save_upload_screen.set_videos(self.arrangement_screen.videos)
                 self.save_upload_screen.main_window = self
             

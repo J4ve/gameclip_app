@@ -15,6 +15,7 @@ class SelectionScreen:
     def __init__(self, page: ft.Page):
         self.page = page
         self.selected_files = []  # Store selected video files
+        self.original_order = []  # Store original order to detect arrangement changes
         self.file_list = ft.Column(spacing=5)  # Display selected files
         self.select_zone_container = None  # Will store the selection zone reference
         self.files_display = None  # Will store the files display reference
