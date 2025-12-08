@@ -22,10 +22,6 @@ class AdminDashboard:
     """Secure admin dashboard for user management"""
     
     def __init__(self, page: ft.Page):
-        print("=" * 80)
-        print("ADMIN DASHBOARD __init__ CALLED")
-        print("=" * 80)
-        
         self.page = page
         self.firebase_service = get_firebase_service()
         
@@ -67,10 +63,8 @@ class AdminDashboard:
         - IP whitelist verification
         """
         if not session_manager.has_permission(Permission.MANAGE_USERS.value):
-            print(f"[SECURITY] Unauthorized access attempt by {session_manager.email}")
             return False
         
-        print(f"[SECURITY] Admin access granted to {session_manager.email}")
         return True
     
     def _handle_unauthorized_access(self):
@@ -92,8 +86,6 @@ class AdminDashboard:
     
     def build(self) -> ft.Container:
         """Build the admin dashboard UI with user management and audit logs"""
-        
-        print("[DEBUG] AdminDashboard.build() called")
         
         # Load audit logs automatically
         if hasattr(self, '_load_audit_logs'):
@@ -126,8 +118,6 @@ class AdminDashboard:
     
     def _build_user_management_section(self) -> ft.Container:
         """Build the user management section with inline audit log viewer"""
-        
-        print("[DEBUG] _build_user_management_section called")
         
         # Add/Update User Form
         self.new_user_email = ft.TextField(
@@ -249,15 +239,12 @@ class AdminDashboard:
         # Initialize audit log service
         try:
             self.audit_log_service = AuditLogService()
-            print("[DEBUG] Audit log service initialized successfully")
         except PermissionError as e:
             print(f"[ADMIN] Failed to initialize audit log service: {e}")
             self.audit_log_service = None
         
         # Build audit log UI inline
-        print("[DEBUG] Building audit log UI...")
         audit_log_content = self._build_audit_log_ui()
-        print(f"[DEBUG] Audit log content built: {audit_log_content is not None}")
         
         # Return user management section with audit logs below
         result = ft.Container(
@@ -291,15 +278,12 @@ class AdminDashboard:
             expand=True
         )
         
-        print(f"[DEBUG] _build_user_management_section returning with {len(result.content.controls)} controls")
         return result
     
     def _build_audit_log_ui(self) -> ft.Container:
         """Build the audit log viewer UI inline"""
-        print("[DEBUG] _build_audit_log_ui called")
         
         if not self.audit_log_service:
-            print("[DEBUG] No audit log service, returning unavailable message")
             return ft.Container(
                 content=ft.Column([
                     ft.Text("AUDIT LOGS", size=24, weight=ft.FontWeight.BOLD, color=ft.Colors.RED),
@@ -310,15 +294,13 @@ class AdminDashboard:
                 height=200
             )
         
-        print("[DEBUG] Building audit log UI with service available")
-        
         # Filter controls
         self.audit_actor_filter = ft.TextField(
             label="Filter by Actor",
             hint_text="admin@example.com",
             prefix_icon=ft.Icons.PERSON,
             on_change=lambda e: self._load_audit_logs(),
-            width=250
+            expand=True
         )
         
         self.audit_target_filter = ft.TextField(
@@ -326,7 +308,7 @@ class AdminDashboard:
             hint_text="user@example.com",
             prefix_icon=ft.Icons.PERSON_OUTLINE,
             on_change=lambda e: self._load_audit_logs(),
-            width=250
+            expand=True
         )
         
         self.audit_action_filter = ft.Dropdown(
@@ -385,7 +367,7 @@ class AdminDashboard:
                 ft.Row([
                     self.audit_actor_filter,
                     self.audit_target_filter,
-                ], spacing=10, wrap=True),
+                ], spacing=10),
                 ft.Row([
                     self.audit_action_filter,
                     self.audit_date_range,
@@ -397,7 +379,7 @@ class AdminDashboard:
             padding=15,
             bgcolor=ft.Colors.with_opacity(0.1, "#1A1A1A"),
             border_radius=10,
-            border=ft.border.all(1, ft.Colors.GREY_700),
+            border=ft.border.all(1, ft.Colors.ORANGE_700),
         )
         
         # Log count and loading
@@ -424,23 +406,28 @@ class AdminDashboard:
             data_row_min_height=35,
         )
         
+        # Wrap table in scroll container with fixed height (Matching User List)
+        table_scroll = ft.Container(
+            content=ft.Column([
+                self.audit_logs_table
+            ], scroll=ft.ScrollMode.AUTO),
+            height=400,
+            border=ft.border.all(1, ft.Colors.GREY_700),
+            border_radius=8,
+            padding=10,
+        )
+        
         return ft.Container(
             content=ft.Column([
                 ft.Text("Audit Logs", size=18, weight=ft.FontWeight.BOLD, color=ft.Colors.ORANGE_400),
-                ft.Text("Track all administrative actions (showing last 10)", size=12, color=ft.Colors.GREY_400),
+                ft.Text("Track all administrative actions (showing last 50)", size=12, color=ft.Colors.GREY_400),
                 filter_panel,
                 ft.Row([self.audit_log_count, self.audit_loading], spacing=10),
-                ft.Container(
-                    content=self.audit_logs_table,
-                    border=ft.border.all(1, ft.Colors.GREY_700),
-                    border_radius=8,
-                    padding=10,
-                ),
-            ], spacing=10, scroll=ft.ScrollMode.AUTO),
-            height=500
+                table_scroll,
+            ], spacing=10),
         )
     
-    def load_users(self):
+    def load_users(self, update_ui=True):
         """
         Load all users from Firebase with backend verification
         
@@ -449,7 +436,7 @@ class AdminDashboard:
         - Caching with TTL to reduce Firebase reads
         - Real-time listener for live updates
         """
-        self._show_loading(True)
+        self._show_loading(True, update_ui)
         
         try:
             # Security Layer 2: Backend verification before data access
@@ -462,10 +449,10 @@ class AdminDashboard:
             self.filtered_users = self.users_data.copy()
             
             # Populate table
-            self._populate_users_table()
+            self._populate_users_table(update_ui)
             
             # Load audit logs when users are loaded
-            self._load_audit_logs()
+            self._load_audit_logs(update_ui)
             
             print(f"[ADMIN] Loaded {len(self.users_data)} users")
             
@@ -473,7 +460,7 @@ class AdminDashboard:
             print(f"[ERROR] Failed to load users: {e}")
             self._show_error(f"Failed to load users: {str(e)}")
         finally:
-            self._show_loading(False)
+            self._show_loading(False, update_ui)
     
     def _verify_backend_permission(self) -> bool:
         """
@@ -492,7 +479,7 @@ class AdminDashboard:
             print(f"[SECURITY] Backend verification failed: {e}")
             return False
     
-    def _populate_users_table(self):
+    def _populate_users_table(self, update_ui=True):
         """Populate the users table with data"""
         self.users_table.controls.clear()
         
@@ -500,14 +487,16 @@ class AdminDashboard:
             self.users_table.controls.append(
                 ft.Text("No users found", color=ft.Colors.GREY_400, italic=True)
             )
-            self.page.update()
+            if update_ui:
+                self.page.update()
             return
         
         for user in self.filtered_users:
             user_row = self._create_user_row(user)
             self.users_table.controls.append(user_row)
         
-        self.page.update()
+        if update_ui:
+            self.page.update()
     
     def _create_user_row(self, user: Dict[str, Any]) -> ft.Container:
         """Create a table row for a user"""
@@ -629,6 +618,7 @@ class AdminDashboard:
         return colors.get(role.lower(), ft.Colors.GREY_700)
     
     def _change_role(self, user: Dict[str, Any], new_role: str):
+        print("🔵 [ADMIN_DASHBOARD.PY] _change_role() called")
         """
         Change user role with security verification
         Includes audit logging, rate limiting, and prevents self-demotion
@@ -718,6 +708,7 @@ class AdminDashboard:
         # Note: When implemented, add audit logging and rate limiting like other admin actions
     
     def _delete_user(self, user: Dict[str, Any]):
+        print("🔵 [ADMIN_DASHBOARD.PY] _delete_user() called")
         """
         Delete user account (permanent action)
         Includes audit logging, rate limiting, and prevents self-deletion
@@ -785,6 +776,7 @@ class AdminDashboard:
             self._show_error(f"Delete failed: {str(e)}")
     
     def _add_or_update_user(self, e):
+        print("🔵 [ADMIN_DASHBOARD.PY] _add_or_update_user() called")
         """
         Add a new user or update existing user's role by email
         Creates a placeholder user document that will be populated when they first log in
@@ -863,20 +855,8 @@ class AdminDashboard:
                     self._show_error(f"Failed to update user role")
             else:
                 # User doesn't exist - create placeholder document
-                from datetime import datetime, timezone
-                user_data = {
-                    'email': email,
-                    'role': role,
-                    'name': email.split('@')[0],  # Use email username as default name
-                    'created_at': datetime.now(timezone.utc),
-                    'last_login': None,
-                    'uid': f'manual_{email}',  # Temporary UID until they log in
-                    'daily_usage': 0,
-                    'usage_count': 0,
-                    'disabled': False,
-                }
-                
-                success = self.firebase_service.create_or_update_user(user_data)
+                # Use the dedicated placeholder method which handles default fields
+                success = self.firebase_service.create_user_placeholder(email, role)
                 
                 # Log the admin action
                 self.firebase_service.log_admin_action(
@@ -939,11 +919,12 @@ class AdminDashboard:
         self.load_users()
         self._show_success("Users refreshed")
     
-    def _show_loading(self, visible: bool):
+    def _show_loading(self, visible: bool, update_ui=True):
         """Show/hide loading indicator"""
         if self.loading_indicator:
             self.loading_indicator.visible = visible
-            self.page.update()
+            if update_ui:
+                self.page.update()
     
     def _show_error(self, message: str):
         """Show error snackbar"""
@@ -963,14 +944,15 @@ class AdminDashboard:
         self.page.snack_bar.open = True
         self.page.update()
     
-    def _load_audit_logs(self):
+    def _load_audit_logs(self, update_ui=True):
         """Load audit logs with current filters"""
         if not self.audit_log_service:
             return
         
         if self.audit_loading:
             self.audit_loading.visible = True
-            self.page.update()
+            if update_ui:
+                self.page.update()
         
         try:
             # Get filter values
@@ -988,7 +970,7 @@ class AdminDashboard:
             )
             
             # Update display
-            self._update_audit_logs_display()
+            self._update_audit_logs_display(update_ui)
             
             if self.audit_log_count:
                 self.audit_log_count.value = f"Showing {len(self.audit_logs_data)} log entries"
@@ -1000,9 +982,10 @@ class AdminDashboard:
         finally:
             if self.audit_loading:
                 self.audit_loading.visible = False
-                self.page.update()
+                if update_ui:
+                    self.page.update()
     
-    def _update_audit_logs_display(self):
+    def _update_audit_logs_display(self, update_ui=True):
         """Update the audit logs table with current data"""
         if not self.audit_logs_table:
             return
@@ -1011,7 +994,8 @@ class AdminDashboard:
             self.audit_logs_table.rows = [
                 ft.DataRow(cells=[ft.DataCell(ft.Text("No logs found", color=ft.Colors.GREY_500))])
             ]
-            self.page.update()
+            if update_ui:
+                self.page.update()
             return
         
         rows = []
@@ -1052,7 +1036,8 @@ class AdminDashboard:
             ))
         
         self.audit_logs_table.rows = rows
-        self.page.update()
+        if update_ui:
+            self.page.update()
     
     def _export_audit_logs(self, e):
         """Export audit logs to CSV"""
