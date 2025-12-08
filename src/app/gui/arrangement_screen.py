@@ -163,7 +163,7 @@ class ArrangementScreen:
         
         # Allow duplicates toggle button (hide for guests)
         duplicate_toggle = None
-        if session_manager.is_authenticated():
+        if session_manager.is_authenticated:
             duplicate_toggle = ft.Container(
                 content=ft.Row([
                     ft.Switch(
@@ -179,7 +179,7 @@ class ArrangementScreen:
             )
         
         # Check if user is a guest (not authenticated)
-        is_guest = not session_manager.is_authenticated()
+        is_guest = not session_manager.is_authenticated
         
         # Usage info for free users
         usage_info_container = None
@@ -323,7 +323,11 @@ class ArrangementScreen:
         else:
             # Check if user has premium/admin access
             has_lock_feature = session_manager.is_premium() or session_manager.is_admin()
-            is_guest = not session_manager.is_authenticated()
+            is_guest = not session_manager.is_authenticated
+            
+            # Check if arrangement limit is reached for free users
+            can_arrange = usage_tracker.can_arrange() if session_manager.is_authenticated else True
+            self.arrangement_disabled = is_guest or not can_arrange
             
             for i, video_path in enumerate(self.videos):
                 video_name = Path(video_path).name
@@ -351,28 +355,28 @@ class ArrangementScreen:
                     )
                     action_buttons.append(lock_button)
                 
-                # Move up/down buttons (disabled for guests)
+                # Move up/down buttons (disabled for guests and limit reached)
                 action_buttons.extend([
                     ft.IconButton(
                         icon=ft.Icons.KEYBOARD_ARROW_UP,
-                        icon_color=ft.Colors.WHITE70 if (can_move_up and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.WHITE70 if (can_move_up and not self.arrangement_disabled) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._move_video(idx, idx - 1),
-                        disabled=not can_move_up or is_guest,
-                        tooltip="Move up" if not is_guest else "Login to arrange"
+                        disabled=not can_move_up or self.arrangement_disabled,
+                        tooltip="Move up" if not self.arrangement_disabled else ("Login to arrange" if is_guest else "Arrangement limit reached")
                     ),
                     ft.IconButton(
                         icon=ft.Icons.KEYBOARD_ARROW_DOWN,
-                        icon_color=ft.Colors.WHITE70 if (can_move_down and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.WHITE70 if (can_move_down and not self.arrangement_disabled) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._move_video(idx, idx + 1),
-                        disabled=not can_move_down or is_guest,
-                        tooltip="Move down" if not is_guest else "Login to arrange"
+                        disabled=not can_move_down or self.arrangement_disabled,
+                        tooltip="Move down" if not self.arrangement_disabled else ("Login to arrange" if is_guest else "Arrangement limit reached")
                     ),
                     ft.IconButton(
                         icon=ft.Icons.COPY,
-                        icon_color=ft.Colors.BLUE_400 if (self.allow_duplicates and not is_guest) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
+                        icon_color=ft.Colors.BLUE_400 if (self.allow_duplicates and not self.arrangement_disabled) else ft.Colors.with_opacity(0.3, "#FFFFFF"),
                         on_click=lambda _, idx=i: self._duplicate_video(idx),
-                        disabled=not self.allow_duplicates or is_guest,
-                        tooltip="Duplicate video" if not is_guest else "Login to duplicate"
+                        disabled=not self.allow_duplicates or self.arrangement_disabled,
+                        tooltip="Duplicate video" if not self.arrangement_disabled else ("Login to duplicate" if is_guest else "Arrangement limit reached")
                     ),
                     ft.IconButton(
                         icon=ft.Icons.REMOVE_CIRCLE,
@@ -505,6 +509,25 @@ class ArrangementScreen:
     
     def _handle_drag_accept(self, e, target_idx):
         """Handle when a video is dropped on another video"""
+        # Check if user has permission to arrange
+        if self.arrangement_disabled:
+            # Show feedback to user
+            if session_manager.is_guest:
+                message = "⚠️ Login to arrange videos"
+                color = ft.Colors.AMBER_700
+            else:
+                message = "⚠️ Arrangement limit reached. Resets at midnight UTC."
+                color = ft.Colors.RED_400
+            
+            if self.page:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text(message, color=ft.Colors.WHITE),
+                    bgcolor=color
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
+            return
+        
         source_idx = e.src_id if hasattr(e, 'src_id') else e.data
         
         # Get the actual source index from the draggable's data
@@ -530,8 +553,12 @@ class ArrangementScreen:
     
     def _handle_drag_will_accept(self, e, target_idx):
         """Visual feedback when hovering over a drop target"""
+        # Check if user has permission to arrange
+        if self.arrangement_disabled:
+            # Show red border - not allowed
+            e.control.content.border = ft.border.all(2, ft.Colors.RED_400)
         # Check if drop is allowed
-        if target_idx in self.locked_videos:
+        elif target_idx in self.locked_videos:
             # Locked position - show red border
             e.control.content.border = ft.border.all(2, ft.Colors.RED_400)
         else:
@@ -865,7 +892,7 @@ class ArrangementScreen:
             
             # Update text for free users to show trial usage warning
             if changed and self.change_indicator_text:
-                is_guest = not session_manager.is_authenticated()
+                is_guest = not session_manager.is_authenticated
                 if not is_guest and not (session_manager.is_premium() or session_manager.is_admin()):
                     # Free user - show trial warning
                     usage_info = usage_tracker.get_usage_info()
@@ -897,7 +924,7 @@ class ArrangementScreen:
             return True
         
         # Don't record for guests
-        if not session_manager.is_authenticated():
+        if not session_manager.is_authenticated:
             return True
         
         # Check if user can still arrange before recording

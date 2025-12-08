@@ -5,6 +5,7 @@ Handles user authentication state, role management, and Firebase sync throughout
 
 from typing import Optional, Dict, Any
 from access_control.roles import Role, RoleManager, RoleType
+from access_control.purchase_service import PurchaseStatus
 
 
 class SessionManager:
@@ -180,6 +181,65 @@ class SessionManager:
             print(f"Error updating user role: {e}")
             return False
     
+    def purchase_premium(self, plan: str = 'monthly') -> Dict[str, Any]:
+        """
+        Purchase premium subscription
+        
+        Args:
+            plan: Premium plan to purchase ('monthly', 'yearly', or 'lifetime')
+            
+        Returns:
+            Dictionary containing purchase result with status, transaction_id, etc.
+        """
+        if not self._current_user or not self._is_logged_in:
+            return {
+                'status': 'failed',
+                'message': 'User not logged in'
+            }
+        
+        if self.is_guest:
+            return {
+                'status': 'failed',
+                'message': 'Guest users cannot purchase premium'
+            }
+        
+        email = self._current_user.get('email')
+        
+        try:
+            from access_control.purchase_service import get_purchase_service, PurchasePlan
+            
+            # Map string to PurchasePlan enum
+            plan_map = {
+                'lifetime': PurchasePlan.LIFETIME,
+            }
+            
+            if plan not in plan_map:
+                return {
+                    'status': 'failed',
+                    'message': f'Invalid plan: {plan}'
+                }
+            
+            purchase_service = get_purchase_service(mock_mode=True)
+            result = purchase_service.purchase_premium(email, plan_map[plan])
+            
+            # If purchase successful, update role to premium
+            if result['status'] == PurchaseStatus.SUCCESS:
+                self.update_role('premium')
+                
+                # Update premium_until in Firebase
+                firebase_service = self._get_firebase_service()
+                if firebase_service and firebase_service.is_available and email:
+                    firebase_service.set_premium_until(email, result['premium_until'])
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error processing premium purchase: {e}")
+            return {
+                'status': 'failed',
+                'message': f'Error processing purchase: {str(e)}'
+            }
+    
     def increment_merge_count(self):
         """Increment merge count in Firebase"""
         firebase_service = self._get_firebase_service()
@@ -262,12 +322,6 @@ class SessionManager:
         if not self._current_role:
             return True
         return self._current_role.limits.ads_enabled
-    
-    def has_watermark(self) -> bool:
-        """Check if videos should have watermark"""
-        if not self._current_role:
-            return True
-        return self._current_role.limits.watermark_enabled
     
     # CONFIG_MARKER: Limit checking methods
     # These methods return the configured limits from the user's role

@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, MagicMock, patch
 from access_control.firebase_service import FirebaseService
-from app.gui.audit_log_viewer import AuditLogViewer
+from app.gui.audit_log_viewer import AuditLogService
 import flet as ft
 
 
@@ -161,7 +161,7 @@ class TestAuditLogViewer:
     
     def test_audit_log_viewer_initialization(self, mock_page, mock_session_manager, mock_firebase_service):
         """Test audit log viewer initialization with proper permissions"""
-        viewer = AuditLogViewer(mock_page)
+        viewer = AuditLogService(mock_page)
         
         assert viewer.page == mock_page
         assert viewer.firebase_service == mock_firebase_service
@@ -174,7 +174,7 @@ class TestAuditLogViewer:
             mock_sm.email = 'user@example.com'
             
             with pytest.raises(PermissionError):
-                AuditLogViewer(mock_page)
+                AuditLogService(mock_page)
     
     def test_load_logs_displays_data(self, mock_page, mock_session_manager, mock_firebase_service):
         """Test loading and displaying audit logs"""
@@ -191,7 +191,7 @@ class TestAuditLogViewer:
         ]
         mock_firebase_service.get_audit_logs.return_value = sample_logs
         
-        viewer = AuditLogViewer(mock_page)
+        viewer = AuditLogService(mock_page)
         viewer.build()  # Build UI components
         viewer.load_logs()
         
@@ -201,7 +201,7 @@ class TestAuditLogViewer:
     
     def test_filter_controls_work(self, mock_page, mock_session_manager, mock_firebase_service):
         """Test filter controls trigger log reload"""
-        viewer = AuditLogViewer(mock_page)
+        viewer = AuditLogService(mock_page)
         viewer.build()
         
         # Simulate filter change
@@ -226,7 +226,7 @@ class TestAuditLogViewer:
             }
         ]
         
-        viewer = AuditLogViewer(mock_page)
+        viewer = AuditLogService(mock_page)
         viewer.logs_data = sample_logs
         viewer.build()
         

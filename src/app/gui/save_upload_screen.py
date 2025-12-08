@@ -19,8 +19,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 class SaveUploadScreen:
     """Third screen: Configure output and upload settings"""
     
-    def __init__(self, videos=None, page=None, on_save=None, on_upload=None, on_back=None):
+    def __init__(self, videos=None, page=None, on_save=None, on_upload=None, on_back=None, parent_window=None):
         self.page = page
+        self.parent_window = parent_window
         self.videos = videos or []
         self.on_save = on_save
         self.on_upload = on_upload
@@ -380,10 +381,10 @@ class SaveUploadScreen:
         save_enabled = session_manager.can_save()
         upload_enabled = session_manager.can_upload()
         
-        # Add watermark warning for guests
-        watermark_warning = ""
-        if session_manager.has_watermark():
-            watermark_warning = "⚠️ Guest videos include watermark"
+        # Guest status message
+        guest_message = ""
+        if session_manager.is_guest:
+            guest_message = "⚠️ Guest mode - Create account for full access"
         
         self.save_button = ft.ElevatedButton(
             "Save Video",
@@ -435,7 +436,7 @@ class SaveUploadScreen:
                 size=12,
                 color=ft.Colors.CYAN_400
             ),
-            ft.Text(watermark_warning, size=10, color=ft.Colors.ORANGE_400, visible=bool(watermark_warning)),
+            ft.Text(guest_message, size=10, color=ft.Colors.ORANGE_400, visible=bool(guest_message)),
         ], spacing=2)
         
         buttons_section = ft.Column([
@@ -698,6 +699,30 @@ class SaveUploadScreen:
             self.save_button.disabled = show
         if self.upload_button:
             self.upload_button.disabled = show
+        if self.page:
+            self.page.update()
+    
+    def _update_upload_button_state(self):
+        """Update upload button state after role change"""
+        if not self.upload_button:
+            return
+        
+        upload_enabled = session_manager.can_upload()
+        
+        # Update button appearance and functionality
+        self.upload_button.icon = ft.Icons.UPLOAD if upload_enabled else ft.Icons.LOCK
+        self.upload_button.bgcolor = ft.Colors.with_opacity(0.85, "#1976D2") if upload_enabled else ft.Colors.with_opacity(0.5, "#666666")
+        self.upload_button.on_click = self._handle_upload if upload_enabled else lambda _: self._show_upload_premium_message()
+        
+        # Update tooltip
+        if not upload_enabled:
+            if session_manager.is_free():
+                self.upload_button.tooltip = "YouTube upload is a Premium feature. Upgrade to upload your videos!"
+            else:
+                self.upload_button.tooltip = "Login to unlock YouTube upload"
+        else:
+            self.upload_button.tooltip = None
+        
         if self.page:
             self.page.update()
     
@@ -1184,8 +1209,281 @@ class SaveUploadScreen:
             self.page.update()
     
     def _show_premium_coming_soon(self):
-        """Show coming soon message for premium feature"""
-        self._show_upgrade_message()
+        """Show premium purchase dialog"""
+        self._show_premium_purchase_dialog()
+    
+    def _show_premium_purchase_dialog(self):
+        """Show premium purchase dialog with plan options"""
+        from access_control.purchase_service import PurchaseService, PurchasePlan
+        
+        # Check if guest user
+        if session_manager.is_guest:
+            self._show_guest_login_prompt()
+            return
+        
+        # Check if not logged in
+        if not session_manager.is_logged_in:
+            self._show_login_prompt()
+            return
+        
+        # Get plan information
+        plans = PurchaseService.get_all_plans()
+        
+        def handle_purchase(plan_name: str):
+            """Handle premium purchase"""
+            dialog.open = False
+            self.page.update()
+            
+            # Show processing message
+            processing_snack = ft.SnackBar(
+                content=ft.Text("➡️ Redirecting to payment gateway..."),
+                bgcolor=ft.Colors.BLUE_700
+            )
+            self.page.snack_bar = processing_snack
+            self.page.snack_bar.open = True
+            self.page.update()
+            
+            # Process purchase
+            result = session_manager.purchase_premium(plan_name)
+            
+            # Show result
+            if result.get('status') and hasattr(result['status'], 'value'):
+                status_value = result['status'].value
+            else:
+                status_value = result.get('status')
+            
+            if status_value == 'success':
+                success_snack = ft.SnackBar(
+                    content=ft.Text(f"✓ Welcome to Premium! {result.get('message', '')}"),
+                    bgcolor=ft.Colors.GREEN_700
+                )
+                self.page.snack_bar = success_snack
+                self.page.snack_bar.open = True
+                self.page.update()
+                
+                # Update UI to reflect premium status
+                self._update_upload_button_state()
+                
+                # Also refresh the entire screen to show new premium status
+                if hasattr(self, 'content') and self.content:
+                    self.page.update()
+            else:
+                error_snack = ft.SnackBar(
+                    content=ft.Text(f"Purchase failed: {result.get('message', 'Unknown error')}"),
+                    bgcolor=ft.Colors.RED_700
+                )
+                self.page.snack_bar = error_snack
+                self.page.snack_bar.open = True
+                self.page.update()
+        
+        # Create plan card (single lifetime plan)
+        plan = plans[0]  # Only one plan now
+        
+        card = ft.Container(
+            content=ft.Column([
+                # Plan header
+                ft.Container(
+                    content=ft.Column([
+                        ft.Text(
+                            "LIFETIME PREMIUM",
+                            size=18,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.AMBER_400,
+                        ),
+                        ft.Text(
+                            plan['description'],
+                            size=12,
+                            color=ft.Colors.GREY_400,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+                    padding=10,
+                ),
+                
+                # Payment Gateway Info
+                ft.Container(
+                    content=ft.Column([
+                        ft.Icon(ft.Icons.PAYMENT, size=40, color=ft.Colors.AMBER_400),
+                        ft.Text(
+                            "Secure Payment",
+                            size=16,
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.AMBER_400,
+                        ),
+                        ft.Text(
+                            "You'll be redirected to our payment gateway",
+                            size=11,
+                            color=ft.Colors.GREY_500,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            "PayMongo / GCash / PayPal",
+                            size=10,
+                            italic=True,
+                            color=ft.Colors.GREY_600,
+                        ),
+                    ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=4),
+                    padding=ft.padding.symmetric(vertical=15),
+                ),
+                
+                # Purchase button
+                ft.ElevatedButton(
+                    "Continue to Payment",
+                    icon=ft.Icons.ARROW_FORWARD,
+                    bgcolor=ft.Colors.AMBER_700,
+                    color=ft.Colors.WHITE,
+                    on_click=lambda _: handle_purchase(plan['plan']),
+                ),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=8),
+            border=ft.border.all(2, ft.Colors.AMBER_400),
+            border_radius=10,
+            padding=20,
+            bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.AMBER_400),
+        )
+        
+        # Create dialog
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.STAR, color=ft.Colors.AMBER_400),
+                ft.Text("Upgrade to Premium", color=ft.Colors.AMBER_400),
+            ]),
+            content=ft.Container(
+                content=ft.Column([
+                    ft.Text(
+                        "Unlock all premium features:",
+                        size=14,
+                        weight=ft.FontWeight.BOLD,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                    
+                    # Features list
+                    ft.Container(
+                        content=ft.Column([
+                            ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), 
+                                   ft.Text("Unlimited video arrangements", size=12)], spacing=5),
+                            ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), 
+                                   ft.Text("No advertisements", size=12)], spacing=5),
+                            ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), 
+                                   ft.Text("Direct YouTube upload", size=12)], spacing=5),
+                            ft.Row([ft.Icon(ft.Icons.CHECK_CIRCLE, size=16, color=ft.Colors.GREEN_400), 
+                                   ft.Text("Priority support", size=12)], spacing=5),
+                        ], spacing=8),
+                        padding=10,
+                        bgcolor=ft.Colors.with_opacity(0.05, ft.Colors.GREEN_400),
+                        border_radius=5,
+                    ),
+                    
+                    ft.Container(height=10),
+                    
+                    # Plan card
+                    card,
+                    
+                    ft.Container(height=5),
+                    
+                    ft.Text(
+                        "🔒 Secure payment processing via PayMongo/GCash/PayPal",
+                        size=10,
+                        italic=True,
+                        color=ft.Colors.GREY_500,
+                        text_align=ft.TextAlign.CENTER,
+                    ),
+                ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10, scroll=ft.ScrollMode.AUTO),
+                width=400,
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: self._close_dialog(dialog)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.CENTER,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _show_guest_login_prompt(self):
+        """Prompt guest to login before purchasing"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Row([
+                ft.Icon(ft.Icons.LOGIN, color=ft.Colors.BLUE_400),
+                ft.Text("Login Required", color=ft.Colors.BLUE_400),
+            ]),
+            content=ft.Column([
+                ft.Icon(ft.Icons.ACCOUNT_CIRCLE, size=64, color=ft.Colors.BLUE_400),
+                ft.Text(
+                    "Please login to purchase premium",
+                    size=16,
+                    weight=ft.FontWeight.BOLD,
+                    text_align=ft.TextAlign.CENTER,
+                ),
+                ft.Text(
+                    "Your purchase will be saved to your account so you can access premium features on any device.",
+                    size=12,
+                    text_align=ft.TextAlign.CENTER,
+                    color=ft.Colors.GREY_400,
+                ),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER, spacing=10, tight=True),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: self._close_dialog(dialog)),
+                ft.ElevatedButton(
+                    "Login",
+                    icon=ft.Icons.LOGIN,
+                    bgcolor=ft.Colors.BLUE_700,
+                    color=ft.Colors.WHITE,
+                    on_click=lambda _: self._redirect_to_login(dialog),
+                ),
+            ],
+            actions_alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _show_login_prompt(self):
+        """Prompt user to login"""
+        dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Login Required"),
+            content=ft.Text("Please login to purchase premium features."),
+            actions=[
+                ft.TextButton("Cancel", on_click=lambda _: self._close_dialog(dialog)),
+                ft.ElevatedButton("Login", on_click=lambda _: self._redirect_to_login(dialog)),
+            ],
+        )
+        
+        self.page.overlay.append(dialog)
+        dialog.open = True
+        self.page.update()
+    
+    def _redirect_to_login(self, dialog):
+        """Close dialog and trigger login flow"""
+        self._close_dialog(dialog)
+        
+        # Trigger return to login screen for OAuth authentication
+        if hasattr(self, 'parent_window') and self.parent_window:
+            try:
+                self.parent_window._return_to_login()
+            except Exception as e:
+                print(f"Error triggering login: {e}")
+                # Fallback to showing snackbar
+                if self.page:
+                    self.page.snack_bar = ft.SnackBar(
+                        content=ft.Text("Please use the Login button in the top right to sign in."),
+                        bgcolor=ft.Colors.BLUE_700
+                    )
+                    self.page.snack_bar.open = True
+                    self.page.update()
+        else:
+            # Show snackbar prompting to use login button
+            if self.page:
+                self.page.snack_bar = ft.SnackBar(
+                    content=ft.Text("Please click the Login button in the top right to sign in."),
+                    bgcolor=ft.Colors.BLUE_700
+                )
+                self.page.snack_bar.open = True
+                self.page.update()
     
     def _show_compatibility_warning(self, issues: list):
         """Show warning dialog for incompatible videos"""

@@ -372,7 +372,7 @@ pytest tests/test_integration.py -v
 
 **Enhancement 3: Advanced RBAC (Custom Roles + Permission Matrix)** ✅
 - [x] Five distinct roles with granular permissions
-- [x] Role-based feature restrictions (watermark, merge limits, ads)
+- [x] Role-based feature restrictions
 - [x] Premium role with time-based expiration
 - [x] Developer role for testing and advanced features
 - [x] Admin dashboard with secure role management

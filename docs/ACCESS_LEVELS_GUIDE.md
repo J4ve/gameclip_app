@@ -67,7 +67,6 @@ This document describes the access level system that controls what users can do 
 - Everything free users can do, PLUS:
 - **Unlimited arrangements** (no daily limit)
 - Lock video positions (premium feature)
-- No watermarks
 - No ads
 
 **UI Experience:**

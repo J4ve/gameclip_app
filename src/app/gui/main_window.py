@@ -44,9 +44,9 @@ class MainWindow:
         self.current_step = 0  # 0=Select, 1=Arrange, 2=Save/Upload
         self.selected_videos = []  # Shared state across screens, (IMPORTANT)
         self.next_button = None  # Next button at bottom right
-        self.selection_screen = SelectionScreen(page=self.page) #selection screen
+        self.selection_screen = SelectionScreen(page=self.page, parent_window=self) #selection screen
         self.arrangement_screen = ArrangementScreen(page=self.page) #arrangement screen
-        self.save_upload_screen = SaveUploadScreen(page=self.page) #save/upload screen
+        self.save_upload_screen = SaveUploadScreen(page=self.page, parent_window=self) #save/upload screen
         
         # Admin dashboard (only initialized if user has permission)
         self.admin_dashboard = None
