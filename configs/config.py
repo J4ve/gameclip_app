@@ -10,7 +10,7 @@ class Config:
 
     APP_TITLE = "Video Merger"
     APP_WIDTH = 1200
-    APP_HEIGHT = 700
+    APP_HEIGHT = 750
     
     # Super Admin Configuration
     # The super admin cannot have their admin rights revoked by other admins

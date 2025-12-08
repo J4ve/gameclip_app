@@ -335,8 +335,8 @@ class MainWindow:
             visible=(self.current_step != 2) # pag nasa last step, next button will disappear
         )
         
-        # Floating ad banner at bottom (alongside next button)
-        floating_ad_banner = ad_manager.create_vertical_banner_ad(self.page, width=600, height=80)
+        # Floating horizontal banner ad (bottom-left)
+        floating_ad_banner = ad_manager.create_horizontal_banner_ad(self.page, width=600, height=80)
         floating_ad_container = ft.Container(
             content=floating_ad_banner,
             left=30,

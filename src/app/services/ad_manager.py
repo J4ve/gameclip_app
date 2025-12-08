@@ -1,6 +1,6 @@
 """
 Ad Manager - Handles ad rotation, timing, and Image-based ad display
-Supports customizable ad rotation from config file
+Uses bundled sample creatives for proof-of-concept ad slots
 """
 
 import flet as ft
@@ -14,16 +14,13 @@ import webbrowser
 
 
 class AdConfig:
-    """Configuration for ad behavior"""
-    # Ad rotation settings
-    ROTATION_ORDER = "random"  # Options: "random", "sequential"
-    ROTATION_INTERVAL = 10  # seconds between ad changes
-    
-    # Ad config file path
-    CONFIG_FILE = Path(__file__).parent.parent.parent.parent / "configs" / "ad_config.txt"
-    
-    # Default fallback ad
-    DEFAULT_AD = ("https://via.placeholder.com/728x90.png?text=Advertisement", "https://example.com")
+    """Configuration for ad behavior (uses sample creatives)."""
+    ROTATION_ORDER = "random"
+    ROTATION_INTERVAL = 10
+    SAMPLE_ADS_DIR = Path(__file__).resolve().parents[3] / "sampleads"
+    SAMPLE_ADS_RAW_BASE = "https://raw.githubusercontent.com/j4ve/videomerger_app/dev/sampleads"
+    DEFAULT_REDIRECT_URL = "https://example.com/v1"
+    DEFAULT_AD = ("https://via.placeholder.com/728x90.png?text=Advertisement", DEFAULT_REDIRECT_URL)
 
 
 class AdManager:
@@ -41,59 +38,43 @@ class AdManager:
         self._load_ads()
     
     def _load_ads(self):
-        """Load ads from config file, separating horizontal and vertical"""
+        """Load mock ads directly from the bundled sampleads directories."""
         try:
-            if AdConfig.CONFIG_FILE.exists():
-                current_section = None
-                with open(AdConfig.CONFIG_FILE, 'r') as f:
-                    for line in f:
-                        line = line.strip()
-                        # Skip empty lines and comments
-                        if not line or line.startswith('#'):
-                            continue
-                        
-                        # Check for section headers
-                        if line == '[HORIZONTAL]':
-                            current_section = 'horizontal'
-                            continue
-                        elif line == '[VERTICAL]':
-                            current_section = 'vertical'
-                            continue
-                        
-                        # Parse format: image_url|redirect_url
-                        if '|' in line:
-                            parts = line.split('|', 1)
-                            if len(parts) == 2:
-                                ad_entry = (parts[0].strip(), parts[1].strip())
-                                if current_section == 'horizontal':
-                                    self.horizontal_ads.append(ad_entry)
-                                elif current_section == 'vertical':
-                                    self.vertical_ads.append(ad_entry)
-                        else:
-                            # If no redirect URL, use image URL as redirect
-                            ad_entry = (line.strip(), line.strip())
-                            if current_section == 'horizontal':
-                                self.horizontal_ads.append(ad_entry)
-                            elif current_section == 'vertical':
-                                self.vertical_ads.append(ad_entry)
-            
-            # If no ads loaded, use defaults
-            if not self.horizontal_ads:
+            horizontal_ads = self._collect_sample_ads('horizontal')
+            vertical_ads = self._collect_sample_ads('vertical')
+
+            if horizontal_ads:
+                self.horizontal_ads = horizontal_ads
+                print(f"Loaded {len(horizontal_ads)} horizontal sample ads")
+            else:
                 self.horizontal_ads.append(AdConfig.DEFAULT_AD)
-                print("No horizontal ads found in config, using default ad")
+                print("No horizontal sample ads found; using default ad")
+
+            if vertical_ads:
+                self.vertical_ads = vertical_ads
+                print(f"Loaded {len(vertical_ads)} vertical sample ads")
             else:
-                print(f"Loaded {len(self.horizontal_ads)} horizontal ads from config")
-            
-            if not self.vertical_ads:
                 self.vertical_ads.append(AdConfig.DEFAULT_AD)
-                print("No vertical ads found in config, using default ad")
-            else:
-                print(f"Loaded {len(self.vertical_ads)} vertical ads from config")
-                
+                print("No vertical sample ads found; using default ad")
+
         except Exception as e:
-            print(f"Error loading ads: {e}")
+            print(f"Error loading sample ads: {e}")
             self.horizontal_ads.append(AdConfig.DEFAULT_AD)
             self.vertical_ads.append(AdConfig.DEFAULT_AD)
+
+    def _collect_sample_ads(self, orientation: str) -> List[Tuple[str, str]]:
+        """Builds a list of mock ads for the given orientation."""
+        ads_dir = AdConfig.SAMPLE_ADS_DIR / orientation
+        if not ads_dir.exists():
+            return []
+
+        ads = []
+        for entry in sorted(ads_dir.iterdir()):
+            if not entry.is_file():
+                continue
+            image_url = f"{AdConfig.SAMPLE_ADS_RAW_BASE}/{orientation}/{entry.name}"
+            ads.append((image_url, AdConfig.DEFAULT_REDIRECT_URL))
+        return ads
     
     def should_show_ads(self) -> bool:
         """Check if current user should see ads"""
@@ -195,9 +176,66 @@ class AdManager:
         except Exception as e:
             print(f"Error opening ad URL: {e}")
     
-    def create_horizontal_ad(self, page: ft.Page, width: int = 300, height: int = 250) -> ft.Container:
+    def create_vertical_side_ad(self, page: ft.Page, width: int = 300, height: int = 250) -> ft.Container:
         """
-        Create a horizontal ad container for side placement
+        Create a side ad slot intended for vertical ads.
+
+        Args:
+            page: Flet page instance
+            width: Ad width
+            height: Ad height
+        
+        Returns:
+            Container with Image ad
+        """
+        if not self.should_show_ads():
+            return ft.Container(visible=False)
+        
+        image_url, redirect_url = self.get_current_vertical_ad()
+        
+        ad_image = ft.Image(
+            src=image_url,
+            width=width,
+            height=height,
+            fit=ft.ImageFit.CONTAIN,
+            border_radius=8,
+        )
+        
+        def update_ad():
+            """Update the ad content"""
+            try:
+                new_image_url, new_redirect_url = self.get_current_vertical_ad()
+                ad_image.src = new_image_url
+                clickable_container.data = new_redirect_url
+                if page:
+                    page.update()
+            except Exception as e:
+                print(f"Error updating vertical ad: {e}")
+        
+        self.register_update_callback(update_ad)
+        
+        clickable_container = ft.Container(
+            content=ad_image,
+            data=redirect_url,  # Store redirect URL in data
+            on_click=lambda e: self._handle_ad_click(e.control.data),
+            tooltip="Click to learn more",
+            ink=True,
+            border_radius=8,
+        )
+        
+        return ft.Container(
+            content=clickable_container,
+            width=width,
+            height=height,
+            bgcolor=ft.Colors.with_opacity(0.05, "#1a1a1a"),
+            border_radius=8,
+            border=ft.border.all(1, ft.Colors.with_opacity(0.2, "#FFFFFF")),
+            padding=5,
+        )
+    
+    def create_horizontal_banner_ad(self, page: ft.Page, width: int = 600, height: int = 80) -> ft.Container:
+        """
+        Create a banner ad slot intended for horizontal ads.
         
         Args:
             page: Flet page instance
@@ -229,64 +267,7 @@ class AdManager:
                 if page:
                     page.update()
             except Exception as e:
-                print(f"Error updating horizontal ad: {e}")
-        
-        self.register_update_callback(update_ad)
-        
-        clickable_container = ft.Container(
-            content=ad_image,
-            data=redirect_url,  # Store redirect URL in data
-            on_click=lambda e: self._handle_ad_click(e.control.data),
-            tooltip="Click to learn more",
-            ink=True,
-            border_radius=8,
-        )
-        
-        return ft.Container(
-            content=clickable_container,
-            width=width,
-            height=height,
-            bgcolor=ft.Colors.with_opacity(0.05, "#1a1a1a"),
-            border_radius=8,
-            border=ft.border.all(1, ft.Colors.with_opacity(0.2, "#FFFFFF")),
-            padding=5,
-        )
-    
-    def create_vertical_banner_ad(self, page: ft.Page, width: int = 728, height: int = 90) -> ft.Container:
-        """
-        Create a vertical banner ad for top placement
-        
-        Args:
-            page: Flet page instance
-            width: Ad width
-            height: Ad height
-        
-        Returns:
-            Container with Image ad
-        """
-        if not self.should_show_ads():
-            return ft.Container(visible=False)
-        
-        image_url, redirect_url = self.get_current_vertical_ad()
-        
-        ad_image = ft.Image(
-            src=image_url,
-            width=width,
-            height=height,
-            fit=ft.ImageFit.CONTAIN,
-            border_radius=8,
-        )
-        
-        def update_ad():
-            """Update the ad content"""
-            try:
-                new_image_url, new_redirect_url = self.get_current_vertical_ad()
-                ad_image.src = new_image_url
-                clickable_container.data = new_redirect_url
-                if page:
-                    page.update()
-            except Exception as e:
-                print(f"Error updating banner ad: {e}")
+                print(f"Error updating horizontal banner ad: {e}")
         
         self.register_update_callback(update_ad)
         
