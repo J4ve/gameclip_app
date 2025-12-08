@@ -127,7 +127,7 @@ This section highlights the major features implemented in the application. Each 
 
 ### 🔐 Access Control & Security
 
-**Multi-Role System (5 Roles)**
+**Multi-Role System (4 Roles)**
 - **Guest**: Limited access, no login required
   - Can merge videos (save locally)
   - Cannot upload to YouTube
@@ -145,12 +145,8 @@ This section highlights the major features implemented in the application. Each 
   - Unlimited daily merges
   - Advanced video arrangement (lock/duplicate)
   - Priority support
-- **Developer**: Testing and development access
-  - All Premium features
-  - Debug tools
-  - No usage limits
 - **Admin**: Full system control
-  - All Developer features
+  - All Premium features
   - User management dashboard
   - Role assignment
   - Audit log viewer
@@ -502,7 +498,7 @@ pytest tests/test_integration.py -v
 ```
 
 **Test Coverage**:
-- Role management: 100% coverage of all 5 roles (guest, free, premium, dev, admin)
+- Role management: 100% coverage of all 4 roles (guest, free, premium, admin)
 - Session management: All lifecycle methods tested (login, logout, role update)
 - Firebase operations: User CRUD, audit logging, admin verification (mocked)
 - OAuth flow: Token loading, refresh, scope validation, error handling (mocked)
@@ -579,7 +575,7 @@ pytest tests/test_integration.py -v
 - [x] Token-based authentication (OAuth tokens stored securely)
 
 **Role-Based Access Control (RBAC)**
-- [x] Define roles: Guest, Normal User, Premium, Developer, Admin
+- [x] Define roles: Guest, Free, Premium, Admin
 - [x] Role enforcement at UI layer (conditional rendering)
 - [x] Role enforcement at backend/service layer (Firebase security rules)
 - [x] Session + Role Manager tracks current user permissions
@@ -637,10 +633,9 @@ pytest tests/test_integration.py -v
 - [ ] Failed login attempts tracking
 
 **Enhancement 3: Advanced RBAC (Custom Roles + Permission Matrix)** ✅
-- [x] Five distinct roles with granular permissions
+- [x] Four distinct roles with granular permissions
 - [x] Role-based feature restrictions
 - [x] Premium role with time-based expiration
-- [x] Developer role for testing and advanced features
 - [x] Admin dashboard with secure role management
 - [x] Backend permission verification before critical operations
 - [ ] Permission matrix UI for admin configuration
