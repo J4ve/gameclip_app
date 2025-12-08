@@ -592,15 +592,18 @@ class FirebaseService:
             return False
     
     def get_audit_logs(self, limit: int = 100, admin_filter: str = None, 
-                       action_filter: str = None, start_date: datetime = None) -> list:
+                       action_filter: str = None, target_user_filter: str = None,
+                       start_date: datetime = None, end_date: datetime = None) -> list:
         """
         Retrieve audit logs from Firestore for admin review
         
         Args:
             limit: Maximum number of logs to return (default 100)
-            admin_filter: Filter by admin email (optional)
-            action_filter: Filter by action type (optional)
+            admin_filter: Filter by admin email (actor who performed the action)
+            action_filter: Filter by action type (role_change, user_creation, etc.)
+            target_user_filter: Filter by target user email (user who was affected)
             start_date: Only return logs after this date (optional)
+            end_date: Only return logs before this date (optional)
             
         Returns:
             list: List of audit log dictionaries, newest first
@@ -615,14 +618,22 @@ class FirebaseService:
             )
             
             # Apply filters
+            # Note: Firestore has limitations on multiple inequality filters
+            # If using multiple date filters, they must be on the same field
             if admin_filter:
                 query = query.where('admin_email', '==', admin_filter)
             
             if action_filter:
                 query = query.where('action', '==', action_filter)
             
+            if target_user_filter:
+                query = query.where('target_user', '==', target_user_filter)
+            
             if start_date:
                 query = query.where('timestamp', '>=', start_date)
+            
+            if end_date:
+                query = query.where('timestamp', '<=', end_date)
             
             # Execute query with limit
             docs = query.limit(limit).stream()

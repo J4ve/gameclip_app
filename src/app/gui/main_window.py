@@ -9,7 +9,7 @@ from .selection_screen import SelectionScreen
 from .arrangement_screen import ArrangementScreen
 from .save_upload_screen import SaveUploadScreen
 from .config_tab import ConfigTab
-from .admin_dashboard import AdminDashboardScreen
+from .admin_dashboard import AdminDashboard
 from access_control.session import session_manager
 from access_control.roles import Permission
 import sys
@@ -357,7 +357,7 @@ class MainWindow:
         if self.current_view == "admin":
             # Show admin dashboard instead of wizard
             if self.admin_dashboard is None:
-                self.admin_dashboard = AdminDashboardScreen(self.page)
+                self.admin_dashboard = AdminDashboard(self.page)
             # Always reload users when switching to admin view
             self.admin_dashboard.load_users()
             admin_content = self.admin_dashboard.build()
