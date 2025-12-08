@@ -328,9 +328,8 @@ pytest tests/test_integration.py -v
 **Profile Management (Self-Service)**
 - [x] View user profile (name, email, picture from Google)
 - [x] Profile picture display (from Google OAuth with fallback icon)
-- [ ] Edit profile fields (name, preferences) - TODO: Direct edit UI
-- [ ] Change password (for email/password auth if implemented)
-- [ ] Profile picture display (from Google OAuth)
+- [x] Metadata configuration templates (title/description/tags for uploads)
+- [ ] Cloud-stored metadata preferences per user (TODO: Save to Firestore)
 
 **Security & Session Controls**
 - [x] Session timeout/inactivity handling
@@ -349,7 +348,7 @@ pytest tests/test_integration.py -v
 - [x] Audit trail for admin actions
 - [x] Structured logging with timestamps and session tracking
 - [x] `get_audit_logs()` method for retrieving historical logs
-- [ ] Audit log viewer UI with filtering and export (planned)
+- [x] Audit log viewer UI with filtering and export
 
 **Secure Configuration**
 - [x] Secrets not hard-coded (`.gitignore` for credentials)
