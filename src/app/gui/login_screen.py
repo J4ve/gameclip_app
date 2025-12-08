@@ -270,6 +270,13 @@ class LoginScreen:
                 firebase_user_data = firebase_service.get_user_by_email(user_data["email"])
                 
                 if firebase_user_data:
+                    # Check if user is disabled
+                    if firebase_user_data.get("disabled", False):
+                        print(f"Login blocked: User {user_data['email']} is disabled")
+                        self._show_error("Your account has been disabled. Please contact support.")
+                        self._set_loading(False)
+                        return
+
                     # Update user with Firebase data (may have upgraded role, etc.)
                     user_data.update({
                         "role": firebase_user_data.get("role", "free"),

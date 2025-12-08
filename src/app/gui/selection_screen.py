@@ -215,8 +215,8 @@ class SelectionScreen:
             alignment=ft.alignment.center,
         )
         
-        # Create horizontal ad for side placement
-        horizontal_ad = ad_manager.create_horizontal_ad(self.page, width=300, height=250)
+        # Create vertical side ad
+        horizontal_ad = ad_manager.create_vertical_side_ad(self.page, width=300, height=250)
 
         # Main content area
         main_content = ft.Column(
