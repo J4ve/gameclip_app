@@ -554,7 +554,6 @@ class AdminDashboard:
             icon=ft.Icons.ADMIN_PANEL_SETTINGS,
             tooltip="Change Role" if not is_super_admin else "Super Admin - Role cannot be changed",
             items=[
-                ft.PopupMenuItem(text="Guest", on_click=lambda e, u=user: self._change_role(u, "guest")),
                 ft.PopupMenuItem(text="Free", on_click=lambda e, u=user: self._change_role(u, "free")),
                 ft.PopupMenuItem(text="Premium", on_click=lambda e, u=user: self._change_role(u, "premium")),
                 ft.PopupMenuItem(text="Admin", on_click=lambda e, u=user: self._change_role(u, "admin")),
