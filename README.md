@@ -5,6 +5,8 @@ An open-source desktop tool for streamers and video editors to automatically upl
 ![Demo of features](./docs/demo/featuresv2.gif)
 
 > **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf) (initial planning phase before development), the [Software Requirements Specification (SRS)](./docs/Group7_SRS.pdf) (latest finalized requirements), and the [initial wireframe](./docs/initial_wireframe.pdf) developed by our team. These documents outline the complete system requirements, functional specifications, and design constraints that guide the development of this project.
+> 
+> **📄 For comprehensive documentation tailored to academic course requirements**, see [Video Merger and Uploader Documentation](./docs/VideoMergerandUploaderDocu.pdf).
 
 ---
 
@@ -928,8 +930,13 @@ For more details, see the [Windows Packaging Guide](https://flet.dev/docs/publis
 
 
 ## 📚 Documentation
+
+**Project Documentation**
+- **[Video Merger and Uploader Documentation](./docs/VideoMergerandUploaderDocu.pdf)** - Comprehensive documentation tailored for academic course requirements and project evaluation
 - **[Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf)** - Initial planning phase requirements (before development started, v1.0, October 2025)
 - **[Software Requirements Specification (SRS)](./docs/Group7_SRS.pdf)** - Latest finalized requirements and specifications (v1.0, December 2025)
+
+**External References**
 - **[Flet Documentation](https://flet.dev/docs/)** - GUI framework reference
 - **[YouTube Data API v3](https://developers.google.com/youtube/v3)** - Upload API documentation
 - **[FFmpeg Documentation](https://ffmpeg.org/documentation.html)** - Video processing reference
