@@ -8,10 +8,13 @@ from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 import pickle
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from utils.path_helper import get_resource_path
 
 
 TOKEN_PATH = "token.pickle"
-CLIENT_SECRET = os.path.join(os.path.dirname(__file__), "..", "..", "configs", "client_secret.json")
+CLIENT_SECRET = get_resource_path(os.path.join("configs", "client_secret.json"))
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/userinfo.profile", 

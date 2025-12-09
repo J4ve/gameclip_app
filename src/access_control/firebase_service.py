@@ -6,6 +6,9 @@ Handles user management, role assignments, and Firestore operations
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from utils.path_helper import get_resource_path
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
@@ -16,10 +19,7 @@ class FirebaseService:
         """Initialize Firebase Admin SDK with service account key"""
         if service_account_path is None:
             # Default path - place your firebase-admin-key.json in the existing configs folder
-            service_account_path = os.path.join(
-                os.path.dirname(__file__), 
-                "..", "..", "configs", "firebase-admin-key.json"
-            )
+            service_account_path = get_resource_path(os.path.join("configs", "firebase-admin-key.json"))
         
         self.service_account_path = service_account_path
         self._db = None

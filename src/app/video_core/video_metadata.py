@@ -3,8 +3,15 @@ Video Metadata Extractor - Get video properties using ffprobe
 """
 
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional, Dict, Any
+
+# Windows-specific flag to prevent CMD windows from appearing
+if sys.platform == 'win32':
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0
 
 
 # Global cache to avoid re-extracting metadata for the same files
@@ -62,7 +69,8 @@ class VideoMetadata:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
-                timeout=10
+                timeout=10,
+                creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0
             )
             
             if result.returncode == 0:

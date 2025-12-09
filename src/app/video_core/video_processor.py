@@ -4,11 +4,18 @@ Video Processing Module - FFmpeg integration for merging videos
 
 import subprocess
 import os
+import sys
 from pathlib import Path
 from datetime import datetime
 from typing import List, Optional, Callable
 import threading
 from .cache_processor import CacheProcessor, CacheSettings
+
+# Windows-specific flag to prevent CMD windows from appearing
+if sys.platform == 'win32':
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0
 
 
 class VideoProcessor:
@@ -26,7 +33,8 @@ class VideoProcessor:
                 ["ffmpeg", "-version"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                check=True
+                check=True,
+                creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError):
@@ -176,7 +184,8 @@ class VideoProcessor:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True
+                universal_newlines=True,
+                creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0
             )
             print(f"[VIDEO_PROCESSOR] FFmpeg process started (PID: {process.pid})")
             
@@ -259,7 +268,8 @@ class VideoProcessor:
                     "-of", "default=noprint_wrappers=1:nokey=1",
                     video_path
                 ]
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                                      creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
                 duration = float(result.stdout.strip())
                 total += duration
             return total

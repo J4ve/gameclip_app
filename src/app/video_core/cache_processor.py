@@ -5,9 +5,16 @@ Supports preview-friendly formats (HLS/DASH) for live preview while writing
 
 import subprocess
 import os
+import sys
 from pathlib import Path
 from typing import Optional, Callable
 import threading
+
+# Windows-specific flag to prevent CMD windows from appearing
+if sys.platform == 'win32':
+    CREATE_NO_WINDOW = 0x08000000
+else:
+    CREATE_NO_WINDOW = 0
 from datetime import datetime
 
 
@@ -146,7 +153,8 @@ class CacheProcessor:
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True
+                universal_newlines=True,
+                creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0
             )
             print(f"[CACHE_PROCESSOR] FFmpeg process started (PID: {process.pid})")
             
@@ -230,7 +238,8 @@ class CacheProcessor:
                     "-of", "json",
                     video_path
                 ]
-                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5)
+                result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=5,
+                                      creationflags=CREATE_NO_WINDOW if sys.platform == 'win32' else 0)
                 
                 import json
                 data = json.loads(result.stdout)

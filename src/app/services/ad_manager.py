@@ -11,13 +11,17 @@ from pathlib import Path
 from typing import List, Tuple, Optional, Callable
 from access_control.session import session_manager
 import webbrowser
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from utils.path_helper import get_resource_path
 
 
 class AdConfig:
     """Configuration for ad behavior (uses sample creatives)."""
     ROTATION_ORDER = "random"
     ROTATION_INTERVAL = 10
-    SAMPLE_ADS_DIR = Path(__file__).resolve().parents[3] / "sampleads"
+    SAMPLE_ADS_DIR = Path(get_resource_path("sampleads"))
     SAMPLE_ADS_RAW_BASE = "https://raw.githubusercontent.com/j4ve/videomerger_app/dev/sampleads"
     DEFAULT_REDIRECT_URL = "https://example.com/v1"
     DEFAULT_AD = ("https://via.placeholder.com/728x90.png?text=Advertisement", DEFAULT_REDIRECT_URL)
