@@ -4,7 +4,7 @@ An open-source desktop tool for streamers and video editors to automatically upl
 
 ![Demo of features](./docs/demo/featuresv2.gif)
 
-> **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf) and the [initial wireframe](./docs/initial_wireframe.pdf) developed by our team. The SRS document outlines the complete system requirements, functional specifications, and design constraints that guide the development of this project.
+> **📋 Project Foundation**: This application is based on the [Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf) (initial planning phase before development), the [Software Requirements Specification (SRS)](./docs/Group7_SRS.pdf) (latest finalized requirements), and the [initial wireframe](./docs/initial_wireframe.pdf) developed by our team. These documents outline the complete system requirements, functional specifications, and design constraints that guide the development of this project.
 
 ---
 
@@ -127,7 +127,7 @@ This section highlights the major features implemented in the application. Each 
 
 ### 🔐 Access Control & Security
 
-**Multi-Role System (5 Roles)**
+**Multi-Role System (4 Roles)**
 - **Guest**: Limited access, no login required
   - Can merge videos (save locally)
   - Cannot upload to YouTube
@@ -145,12 +145,8 @@ This section highlights the major features implemented in the application. Each 
   - Unlimited daily merges
   - Advanced video arrangement (lock/duplicate)
   - Priority support
-- **Developer**: Testing and development access
-  - All Premium features
-  - Debug tools
-  - No usage limits
 - **Admin**: Full system control
-  - All Developer features
+  - All Premium features
   - User management dashboard
   - Role assignment
   - Audit log viewer
@@ -502,7 +498,7 @@ pytest tests/test_integration.py -v
 ```
 
 **Test Coverage**:
-- Role management: 100% coverage of all 5 roles (guest, free, premium, dev, admin)
+- Role management: 100% coverage of all 4 roles (guest, free, premium, admin)
 - Session management: All lifecycle methods tested (login, logout, role update)
 - Firebase operations: User CRUD, audit logging, admin verification (mocked)
 - OAuth flow: Token loading, refresh, scope validation, error handling (mocked)
@@ -579,7 +575,7 @@ pytest tests/test_integration.py -v
 - [x] Token-based authentication (OAuth tokens stored securely)
 
 **Role-Based Access Control (RBAC)**
-- [x] Define roles: Guest, Normal User, Premium, Developer, Admin
+- [x] Define roles: Guest, Free, Premium, Admin
 - [x] Role enforcement at UI layer (conditional rendering)
 - [x] Role enforcement at backend/service layer (Firebase security rules)
 - [x] Session + Role Manager tracks current user permissions
@@ -637,10 +633,9 @@ pytest tests/test_integration.py -v
 - [ ] Failed login attempts tracking
 
 **Enhancement 3: Advanced RBAC (Custom Roles + Permission Matrix)** ✅
-- [x] Five distinct roles with granular permissions
+- [x] Four distinct roles with granular permissions
 - [x] Role-based feature restrictions
 - [x] Premium role with time-based expiration
-- [x] Developer role for testing and advanced features
 - [x] Admin dashboard with secure role management
 - [x] Backend permission verification before critical operations
 - [ ] Permission matrix UI for admin configuration
@@ -725,7 +720,9 @@ The project is based on our **Software Requirements Specification (SRS) v1.0** w
 - **Non-Functional Requirements**: Performance targets (<5 min for 10 HD clips), usability (3-attempt learning curve), security (encrypted token storage), reliability (auto-resume uploads), and maintainability (modular architecture)
 - **System Constraints**: Windows 10+, Python with Flet framework, FFmpeg integration, YouTube Data API v3 compliance
 
-For detailed specifications for the initial planning, see [Group7_LTSRS.pdf](./Group7_LTSRS.pdf).
+For detailed specifications, see:
+- **Initial Planning (Pre-Development)**: [Long-Term SRS (LTSRS)](./docs/Group7_LTSRS.pdf) - October 2025
+- **Latest Finalized Requirements**: [Software Requirements Specification (SRS)](./docs/Group7_SRS.pdf) - December 2025
 
 ---
 
@@ -931,7 +928,8 @@ For more details, see the [Windows Packaging Guide](https://flet.dev/docs/publis
 
 
 ## 📚 Documentation
-- **[Software Requirements Specification (SRS)](./Group7_LTSRS.pdf)** - Complete system requirements and specifications (v1.0, October 2025)
+- **[Long-Term Software Requirements Specification (LTSRS)](./docs/Group7_LTSRS.pdf)** - Initial planning phase requirements (before development started, v1.0, October 2025)
+- **[Software Requirements Specification (SRS)](./docs/Group7_SRS.pdf)** - Latest finalized requirements and specifications (v1.0, December 2025)
 - **[Flet Documentation](https://flet.dev/docs/)** - GUI framework reference
 - **[YouTube Data API v3](https://developers.google.com/youtube/v3)** - Upload API documentation
 - **[FFmpeg Documentation](https://ffmpeg.org/documentation.html)** - Video processing reference
