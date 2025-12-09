@@ -17,13 +17,6 @@ class Config:
     # This email MUST be set in the .env file
     SUPER_ADMIN_EMAIL = os.getenv("SUPER_ADMIN_EMAIL")
     
-    # Validate that super admin email is configured
-    if not SUPER_ADMIN_EMAIL:
-        raise ValueError(
-            "SUPER_ADMIN_EMAIL is not set! "
-            "Please create a .env file with SUPER_ADMIN_EMAIL=your-email@gmail.com"
-        )
-
     DEFAULT_OUTPUT_FORMAT = "merged_video" #placeholder muna, sa program na madagdag ng ".mp4" saka date
 
     SUPPORTED_VIDEO_FORMATS = [
